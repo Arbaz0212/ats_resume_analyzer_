@@ -1,0 +1,85 @@
+<!-- JD Parsed Preview (returned by POST /api/parse-jd) -->
+<div class="card animate-fade-in mt-4" style="border-left: 3px solid #6366f1;">
+  
+  {% if not parsed %}
+  <div class="flex items-center gap-3 p-4">
+    <svg class="w-5 h-5" style="color: #6366f1;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/>
+    </svg>
+    <p class="text-sm" style="color: var(--text-secondary)">AI preview unavailable — analysis will use keyword matching instead.</p>
+  </div>
+  {% else %}
+  
+  <!-- Header -->
+  <div class="flex items-center gap-3 mb-4">
+    <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #ede9fe, #dbeafe);">
+      <svg class="w-4 h-4" style="color: #6366f1;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+      </svg>
+    </div>
+    <div>
+      <h4 class="font-semibold text-sm" style="color: var(--text-primary)">AI JD Analysis Preview</h4>
+      <p class="text-xs" style="color: var(--text-tertiary)">Here's what we understood from your job description</p>
+    </div>
+  </div>
+
+  <!-- Role & Seniority -->
+  <div class="flex flex-wrap gap-2 mb-4">
+    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style="background: #dbeafe; color: #1e40af;">
+      {{ parsed.role_title }}
+    </span>
+    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style="background: #f3e8ff; color: #6b21a8;">
+      {{ parsed.seniority_level | title }} Level
+    </span>
+    {% if parsed.min_years_experience %}
+    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style="background: #fef3c7; color: #92400e;">
+      {{ parsed.min_years_experience }}+ years
+    </span>
+    {% endif %}
+    {% if parsed.required_education %}
+    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style="background: #ecfdf5; color: #065f46;">
+      {{ parsed.required_education }}
+    </span>
+    {% endif %}
+  </div>
+
+  <!-- Summary -->
+  {% if parsed.summary %}
+  <p class="text-sm mb-4" style="color: var(--text-secondary); line-height: 1.6;">{{ parsed.summary }}</p>
+  {% endif %}
+
+  <!-- Requirements by Category -->
+  {% set categories = {'technical': 'Technical Skills', 'soft_skill': 'Soft Skills', 'experience': 'Experience', 'education': 'Education', 'certification': 'Certifications'} %}
+  {% for cat_key, cat_label in categories.items() %}
+    {% set cat_reqs = parsed.requirements | selectattr('category', 'equalto', cat_key) | list %}
+    {% if cat_reqs %}
+    <div class="mb-3">
+      <h5 class="text-xs font-semibold uppercase tracking-wider mb-2" style="color: var(--text-tertiary)">{{ cat_label }}</h5>
+      <div class="flex flex-wrap gap-1.5">
+        {% for req in cat_reqs %}
+        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium" 
+              style="background: {{ '#fef2f2' if req.importance == 'must_have' else '#fffbeb' }}; color: {{ '#991b1b' if req.importance == 'must_have' else '#92400e' }};"
+              title="{{ 'Required' if req.importance == 'must_have' else 'Nice to have' }}{% if req.alternatives %} (alternatives: {{ req.alternatives | join(', ') }}){% endif %}">
+          <span class="w-1.5 h-1.5 rounded-full" style="background: {{ '#ef4444' if req.importance == 'must_have' else '#f59e0b' }};"></span>
+          {{ req.skill_or_requirement }}
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  {% endfor %}
+
+  <!-- Legend -->
+  <div class="flex items-center gap-4 mt-4 pt-3" style="border-top: 1px solid var(--border-light);">
+    <span class="flex items-center gap-1 text-[10px]" style="color: var(--text-tertiary);">
+      <span class="w-1.5 h-1.5 rounded-full" style="background: #ef4444;"></span> Must Have
+    </span>
+    <span class="flex items-center gap-1 text-[10px]" style="color: var(--text-tertiary);">
+      <span class="w-1.5 h-1.5 rounded-full" style="background: #f59e0b;"></span> Nice to Have
+    </span>
+    <span class="flex-1"></span>
+    <span class="text-[10px]" style="color: var(--text-tertiary);">Proceed to upload resumes for scoring →</span>
+  </div>
+
+  {% endif %}
+</div>

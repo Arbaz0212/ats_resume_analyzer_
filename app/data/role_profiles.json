@@ -1,0 +1,98 @@
+{
+  "software engineer": {
+    "skills": [
+      "python", "java", "javascript", "sql", "git", "rest api",
+      "docker", "linux", "agile", "unit testing", "ci/cd",
+      "microservices", "design patterns", "problem solving"
+    ],
+    "weights": { "skills": 35, "experience": 25, "similarity": 20, "projects": 12, "education": 8 }
+  },
+  "frontend developer": {
+    "skills": [
+      "javascript", "typescript", "react", "html", "css", "tailwind",
+      "redux", "webpack", "vite", "responsive design", "web accessibility",
+      "git", "rest api", "jest", "figma"
+    ],
+    "weights": { "skills": 35, "experience": 20, "similarity": 20, "projects": 18, "education": 7 }
+  },
+  "backend developer": {
+    "skills": [
+      "python", "java", "node.js", "sql", "postgresql", "rest api",
+      "docker", "redis", "microservices", "kafka", "linux",
+      "git", "ci/cd", "unit testing"
+    ],
+    "weights": { "skills": 35, "experience": 25, "similarity": 20, "projects": 12, "education": 8 }
+  },
+  "full stack developer": {
+    "skills": [
+      "javascript", "typescript", "react", "node.js", "python",
+      "sql", "mongodb", "rest api", "git", "docker",
+      "html", "css", "tailwind", "agile", "ci/cd"
+    ],
+    "weights": { "skills": 35, "experience": 22, "similarity": 18, "projects": 17, "education": 8 }
+  },
+  "data analyst": {
+    "skills": [
+      "sql", "python", "excel", "tableau", "power bi",
+      "data visualization", "data analysis", "statistics",
+      "pandas", "reporting", "business intelligence"
+    ],
+    "weights": { "skills": 30, "experience": 25, "similarity": 25, "projects": 12, "education": 8 }
+  },
+  "data scientist": {
+    "skills": [
+      "python", "r", "sql", "machine learning", "deep learning",
+      "tensorflow", "pytorch", "pandas", "numpy", "scikit-learn",
+      "nlp", "statistics", "data visualization", "feature engineering"
+    ],
+    "weights": { "skills": 30, "experience": 20, "similarity": 20, "projects": 15, "education": 15 }
+  },
+  "ml engineer": {
+    "skills": [
+      "python", "tensorflow", "pytorch", "docker", "kubernetes",
+      "mlops", "machine learning", "deep learning", "model deployment",
+      "aws", "ci/cd", "data pipeline", "spark"
+    ],
+    "weights": { "skills": 30, "experience": 22, "similarity": 20, "projects": 18, "education": 10 }
+  },
+  "devops engineer": {
+    "skills": [
+      "docker", "kubernetes", "terraform", "aws", "linux",
+      "ci/cd", "jenkins", "github actions", "ansible", "monitoring",
+      "prometheus", "grafana", "python", "bash", "nginx"
+    ],
+    "weights": { "skills": 35, "experience": 28, "similarity": 17, "projects": 12, "education": 8 }
+  },
+  "qa engineer": {
+    "skills": [
+      "selenium", "api testing", "manual testing", "automation testing",
+      "jira", "sql", "postman", "python", "java",
+      "regression testing", "test driven development", "cucumber", "git"
+    ],
+    "weights": { "skills": 35, "experience": 30, "similarity": 15, "projects": 12, "education": 8 }
+  },
+  "product manager": {
+    "skills": [
+      "agile", "scrum", "jira", "roadmap", "stakeholder management",
+      "data analysis", "sql", "communication", "leadership",
+      "project management", "presentation", "documentation"
+    ],
+    "weights": { "skills": 25, "experience": 30, "similarity": 25, "projects": 10, "education": 10 }
+  },
+  "data engineer": {
+    "skills": [
+      "python", "sql", "spark", "airflow", "kafka",
+      "aws", "docker", "etl", "data warehouse", "data modeling",
+      "snowflake", "databricks", "dbt", "data pipeline"
+    ],
+    "weights": { "skills": 30, "experience": 25, "similarity": 20, "projects": 15, "education": 10 }
+  },
+  "mobile developer": {
+    "skills": [
+      "react native", "flutter", "ios", "android", "javascript",
+      "typescript", "dart", "swift", "kotlin", "rest api",
+      "git", "mobile development", "firebase"
+    ],
+    "weights": { "skills": 35, "experience": 22, "similarity": 18, "projects": 18, "education": 7 }
+  }
+}

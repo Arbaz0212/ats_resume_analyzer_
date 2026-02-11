@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="AI-powered ATS Resume Analyzer — Score, rank, and shortlist candidates instantly." />
+  <title>{% block title %}ATS Resume Analyzer{% endblock %}</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: ['selector', '[data-theme="dark"]'],
+      theme: {
+        extend: {
+          colors: {
+            walmart: {
+              blue: '#0053e2',
+              'blue-hover': '#0046c0',
+              'blue-pressed': '#003a9e',
+              spark: '#ffc220',
+              'spark-dark': '#995213',
+            },
+            success: '#2a8703',
+            danger: '#ea1100',
+            warning: '#995213',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+        },
+      },
+    }
+  </script>
+
+  <!-- Inter + JetBrains Mono fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+
+  <!-- Alpine.js (for form state only) -->
+  <script defer src="https://unpkg.com/alpinejs@3.14.3/dist/cdn.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="/static/css/app.css" />
+
+  <!-- Dark mode init (prevent flash) -->
+  <script>
+    (function() {
+      const saved = localStorage.getItem('ats-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (saved === 'dark' || (!saved && prefersDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+</head>
+<body class="font-sans antialiased min-h-screen transition-colors duration-300" x-data="{ mobileNav: false }">
+
+  <!-- Skip link (WCAG 2.2) -->
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[60] bg-walmart-blue text-white px-4 py-2 rounded-lg font-semibold">
+    Skip to main content
+  </a>
+
+  <!-- Navigation — Glass morphism -->
+  <nav class="nav-glass sticky top-0 z-40" role="navigation" aria-label="Main navigation">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo -->
+        <a href="/" class="flex items-center gap-3 group" aria-label="ATS Resume Analyzer Home">
+          <div class="w-9 h-9 bg-walmart-blue rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-200">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <span class="text-lg font-bold" style="color: var(--text-primary)">ATS Analyzer</span>
+            <span class="hidden sm:inline text-xs ml-2 font-mono" style="color: var(--text-tertiary)">v2.0</span>
+          </div>
+        </a>
+
+        <!-- Desktop Nav + Theme toggle -->
+        <div class="hidden md:flex items-center gap-1">
+          <a href="/" class="nav-link {% block nav_dashboard %}{% endblock %}" aria-current="{% block aria_dashboard %}{% endblock %}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" /></svg>
+            Dashboard
+          </a>
+          <a href="/analyze" class="nav-link {% block nav_analyze %}{% endblock %}" aria-current="{% block aria_analyze %}{% endblock %}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+            Analyze
+          </a>
+          <a href="/review" class="nav-link {% block nav_review %}{% endblock %}" aria-current="{% block aria_review %}false{% endblock %}">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            Resume Review
+          </a>
+
+          <div class="w-px h-6 bg-gray-200 dark:bg-gray-700 mx-2"></div>
+
+          <!-- Dark mode toggle -->
+          <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode" title="Toggle dark mode">
+            <!-- Sun icon (shown in dark mode) -->
+            <svg id="theme-sun" class="w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+            </svg>
+            <!-- Moon icon (shown in light mode) -->
+            <svg id="theme-moon" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Mobile: theme + hamburger -->
+        <div class="md:hidden flex items-center gap-2">
+          <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle dark mode">
+            <svg id="theme-sun-mobile" class="w-5 h-5 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+            </svg>
+            <svg id="theme-moon-mobile" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
+            </svg>
+          </button>
+          <button @click="mobileNav = !mobileNav" class="p-2 rounded-lg hover:bg-gray-100" aria-label="Toggle menu">
+            <svg class="w-6 h-6" style="color: var(--text-primary)" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path x-show="!mobileNav" stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              <path x-show="mobileNav" stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile menu -->
+    <div x-show="mobileNav" x-transition.origin.top class="md:hidden border-t" style="border-color: var(--border-light); background: var(--surface-primary)">
+      <div class="px-4 py-3 space-y-1">
+        <a href="/" class="mobile-nav-link">Dashboard</a>
+        <a href="/analyze" class="mobile-nav-link">Analyze Resumes</a>
+        <a href="/review" class="mobile-nav-link">Resume Review</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Footer -->
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 mt-8">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6" style="border-top: 1px solid var(--border-light)">
+      <p class="text-xs" style="color: var(--text-tertiary)">ATS Resume Analyzer • Built with FastAPI + HTMX + Tailwind</p>
+      <div class="flex items-center gap-4">
+        <span class="text-xs font-mono" style="color: var(--text-tertiary)">v2.0.0</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 space-y-3" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,1053 @@
+{% extends "base.html" %} {% block title %}Analyze Resumes — ATS Resume
+Analyzer{% endblock %} {% block nav_analyze %}nav-link-active{% endblock %} {%
+block aria_analyze %}page{% endblock %} {% block content %}
+<div class="max-w-4xl mx-auto">
+  <!-- Page Header -->
+  <div class="mb-8 animate-fade-in">
+    <h1 class="text-3xl font-bold" style="color: var(--text-primary)">
+      Analyze Resumes
+    </h1>
+    <p class="mt-2" style="color: var(--text-tertiary)">
+      Upload resumes and compare them against a job description
+    </p>
+  </div>
+
+  <!-- Progress Stepper -->
+  <div class="mb-10 animate-fade-in">
+    <div class="flex items-center gap-0 px-4">
+      <div class="flex items-center gap-2">
+        <div class="step-number" id="step-indicator-1">1</div>
+        <span
+          class="text-sm font-medium hidden sm:inline"
+          style="color: var(--text-secondary)"
+          >Role</span
+        >
+      </div>
+      <div class="step-connector mx-3" id="connector-1"></div>
+      <div class="flex items-center gap-2">
+        <div class="step-number step-number-inactive" id="step-indicator-2">
+          2
+        </div>
+        <span
+          class="text-sm font-medium hidden sm:inline"
+          style="color: var(--text-secondary)"
+          >Job Description</span
+        >
+      </div>
+      <div class="step-connector mx-3" id="connector-2"></div>
+      <div class="flex items-center gap-2">
+        <div class="step-number step-number-inactive" id="step-indicator-3">
+          3
+        </div>
+        <span
+          class="text-sm font-medium hidden sm:inline"
+          style="color: var(--text-secondary)"
+          >Resumes</span
+        >
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Form — NO hx-post, we handle submission manually via XHR -->
+  <form
+    id="analyze-form"
+    class="space-y-8"
+    x-data="uploadForm()"
+    x-effect="updateSteps(role, jd, files, jdMode, jdFile)"
+    @submit.prevent="submitForm()"
+  >
+    <!-- Step 1: Role Selection (Optional) -->
+    <div class="card animate-fade-in-up" style="animation-delay: 100ms">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="step-number">1</div>
+        <div>
+          <h2 class="text-lg font-semibold" style="color: var(--text-primary)">
+            Select Job Role
+            <span
+              class="text-sm font-normal"
+              style="color: var(--text-tertiary)"
+              >(Optional)</span
+            >
+          </h2>
+          <p class="text-sm" style="color: var(--text-tertiary)">
+            Choose a role for context, or skip to use JD-based scoring
+          </p>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        <!-- No specific role option -->
+        <label
+          class="role-select-card"
+          :class="{ 'role-select-active': role === '' }"
+        >
+          <input
+            type="radio"
+            name="role"
+            value=""
+            x-model="role"
+            class="sr-only"
+          />
+          <span class="text-sm font-medium" style="color: var(--text-tertiary)"
+            >No specific role</span
+          >
+        </label>
+        {% for r in roles %}
+        <label
+          class="role-select-card"
+          :class="{ 'role-select-active': role === '{{ r }}' }"
+        >
+          <input
+            type="radio"
+            name="role"
+            value="{{ r }}"
+            x-model="role"
+            class="sr-only"
+          />
+          <span class="text-sm font-medium">{{ r | title }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Step 2: Job Description -->
+    <div class="card animate-fade-in-up" style="animation-delay: 200ms">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="step-number">2</div>
+        <div class="flex-1">
+          <h2 class="text-lg font-semibold" style="color: var(--text-primary)">
+            Job Description
+          </h2>
+          <p class="text-sm" style="color: var(--text-tertiary)">
+            Paste text or upload a PDF/DOCX file
+          </p>
+        </div>
+        <!-- Template button (only in paste mode) -->
+        <div class="flex items-center gap-3" x-show="jdMode === 'paste'">
+          <button
+            type="button"
+            x-show="role && jdTemplates[role]"
+            @click="jd = jdTemplates[role]"
+            class="btn-ghost text-walmart-blue text-xs font-semibold"
+            title="Fill with a sample JD for this role"
+          >
+            <svg
+              class="w-3.5 h-3.5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+              />
+            </svg>
+            Use template
+          </button>
+          <div class="hidden sm:flex items-center gap-2">
+            <div
+              class="h-1.5 w-16 rounded-full overflow-hidden"
+              style="background: var(--border-default)"
+            >
+              <div
+                class="h-full rounded-full transition-all duration-500"
+                :style="'width:' + Math.min(jd.length / 5, 100) + '%; background:' + (jd.length > 200 ? '#2a8703' : jd.length > 50 ? '#0053e2' : '#ea1100')"
+              ></div>
+            </div>
+            <span
+              class="text-xs font-mono"
+              :style="'color:' + (jd.length > 200 ? '#2a8703' : jd.length > 50 ? '#0053e2' : 'var(--text-tertiary)')"
+            >
+              <span x-text="jd.length"></span> chars
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- JD Mode Toggle -->
+      <div class="flex items-center gap-1 mb-4 p-1 rounded-xl" style="background: var(--surface-secondary); display: inline-flex;">
+        <button
+          type="button"
+          @click="setJdMode('paste')"
+          class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
+          :class="jdMode === 'paste' ? 'jd-toggle-active' : 'jd-toggle-inactive'"
+          aria-label="Paste job description text"
+        >
+          <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+            </svg>
+            Paste Text
+          </span>
+        </button>
+        <button
+          type="button"
+          @click="setJdMode('upload')"
+          class="px-4 py-1.5 rounded-lg text-sm font-medium transition-all duration-200"
+          :class="jdMode === 'upload' ? 'jd-toggle-active' : 'jd-toggle-inactive'"
+          aria-label="Upload job description file"
+        >
+          <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+            Upload File
+          </span>
+        </button>
+      </div>
+
+      <!-- Paste Text Mode -->
+      <div x-show="jdMode === 'paste'" x-transition>
+        <textarea
+          name="job_description"
+          x-model="jd"
+          rows="8"
+          placeholder="Paste the full job description here… Include responsibilities, requirements, preferred qualifications, and tech stack."
+          class="input-textarea"
+          aria-label="Job description"
+        ></textarea>
+      </div>
+
+      <!-- Upload File Mode -->
+      <div x-show="jdMode === 'upload'" x-transition>
+        <!-- JD Drop zone (when no file selected) -->
+        <div
+          x-show="!jdFile"
+          class="drop-zone"
+          style="padding: 24px;"
+          :class="{ 'drop-zone-active': jdDragging }"
+          @dragover.prevent="jdDragging = true"
+          @dragleave.prevent="jdDragging = false"
+          @drop.prevent="handleJdDrop($event)"
+          @click="$refs.jdFileInput.click()"
+          role="button"
+          tabindex="0"
+          @keydown.enter="$refs.jdFileInput.click()"
+          aria-label="Upload job description file"
+        >
+          <input
+            type="file"
+            x-ref="jdFileInput"
+            @change="handleJdFile($event)"
+            accept=".pdf,.docx"
+            class="hidden"
+          />
+          <div class="text-center">
+            <div
+              class="mx-auto w-10 h-10 rounded-xl flex items-center justify-center mb-3"
+              style="background: var(--wm-blue-subtle)"
+            >
+              <svg class="w-5 h-5 text-walmart-blue" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+            </div>
+            <p class="text-sm font-medium" style="color: var(--text-primary)">
+              Drop JD file here or <span class="text-walmart-blue font-semibold">browse</span>
+            </p>
+            <p class="text-xs mt-1" style="color: var(--text-tertiary)">PDF or DOCX • Single file</p>
+          </div>
+        </div>
+
+        <!-- JD file selected indicator -->
+        <div
+          x-show="jdFile"
+          class="file-chip animate-scale-in"
+          style="display: flex; align-items: center; gap: 12px;"
+        >
+          <div
+            class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            :style="jdFileName.endsWith('.pdf') ? 'background: #fef2f2; color: #ea1100;' : 'background: #eff6ff; color: #0053e2;'"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="#2a8703" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-medium truncate" style="color: var(--text-primary)" x-text="jdFileName"></span>
+              <span class="text-[10px] font-bold uppercase tracking-wider text-success">Ready</span>
+            </div>
+            <span class="text-xs font-mono" style="color: var(--text-tertiary)" x-text="jdFileSize"></span>
+          </div>
+          <button
+            type="button"
+            @click="clearJdFile()"
+            class="hover:text-danger transition-colors p-1 rounded-md hover:bg-red-50"
+            style="color: var(--text-tertiary)"
+            aria-label="Remove JD file"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Preview JD Analysis Button -->
+      <div class="mt-3 flex items-center gap-3" x-show="(jdMode === 'paste' && jd.trim().length > 100) || (jdMode === 'upload' && jdFile)">
+        <button type="button" 
+                @click="previewJD()"
+                :disabled="jdPreviewing"
+                class="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors"
+                style="background: linear-gradient(135deg, #ede9fe, #dbeafe); color: #5b21b6;">
+          <template x-if="!jdPreviewing">
+            <span class="flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+              </svg>
+              Preview JD Analysis
+            </span>
+          </template>
+          <template x-if="jdPreviewing">
+            <span class="flex items-center gap-1.5">
+              <span class="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+              Analyzing JD...
+            </span>
+          </template>
+        </button>
+        <span x-show="jdPreviewing" class="text-xs" style="color: var(--text-tertiary);">This may take a few seconds</span>
+      </div>
+
+      <!-- JD Preview Results -->
+      <div id="jd-preview-area"></div>
+    </div>
+
+    <!-- Step 3: Resume Upload -->
+    <div class="card animate-fade-in-up" style="animation-delay: 300ms">
+      <div class="flex items-center gap-3 mb-5">
+        <div class="step-number">3</div>
+        <div class="flex-1">
+          <h2 class="text-lg font-semibold" style="color: var(--text-primary)">
+            Upload Resumes
+          </h2>
+          <p class="text-sm" style="color: var(--text-tertiary)">
+            Drag & drop or click to select PDF/DOCX files
+          </p>
+        </div>
+        <template x-if="files.length > 0">
+          <span
+            class="text-xs font-mono px-2 py-1 rounded-md"
+            style="background: var(--wm-blue-subtle); color: var(--wm-blue)"
+          >
+            <span x-text="files.length"></span> file(s)
+          </span>
+        </template>
+      </div>
+
+      <!-- Drop zone (hide during upload) -->
+      <div
+        x-show="phase === 'idle'"
+        class="drop-zone"
+        :class="{ 'drop-zone-active': dragging }"
+        @dragover.prevent="dragging = true"
+        @dragleave.prevent="dragging = false"
+        @drop.prevent="handleDrop($event)"
+        @click="$refs.fileInput.click()"
+        role="button"
+        tabindex="0"
+        @keydown.enter="$refs.fileInput.click()"
+        aria-label="Upload resumes"
+      >
+        <input
+          type="file"
+          name="resumes"
+          x-ref="fileInput"
+          @change="handleFiles($event)"
+          multiple
+          accept=".pdf,.docx"
+          class="hidden"
+        />
+        <div class="text-center">
+          <div
+            class="mx-auto w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+            style="background: var(--wm-blue-subtle)"
+          >
+            <svg
+              class="w-7 h-7 text-walmart-blue"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
+              />
+            </svg>
+          </div>
+          <p class="font-medium" style="color: var(--text-primary)">
+            Drop resumes here or
+            <span class="text-walmart-blue font-semibold">browse</span>
+          </p>
+          <p class="text-sm mt-1" style="color: var(--text-tertiary)">
+            PDF, DOCX • Max 10MB each • Up to 50 files
+          </p>
+        </div>
+      </div>
+
+      <!-- File list with per-file progress -->
+      <template x-if="files.length > 0">
+        <div class="mt-4 space-y-2">
+          <div class="flex items-center justify-between">
+            <span
+              class="text-sm font-medium"
+              style="color: var(--text-secondary)"
+            >
+              <template x-if="phase === 'idle'">
+                <span x-text="files.length + ' file(s) selected'"></span>
+              </template>
+              <template x-if="phase === 'uploading'">
+                <span class="flex items-center gap-2">
+                  <span
+                    class="inline-block w-3 h-3 border-2 border-walmart-blue border-t-transparent rounded-full animate-spin"
+                  ></span>
+                  Uploading…
+                </span>
+              </template>
+              <template x-if="phase === 'analyzing'">
+                <span class="flex items-center gap-2">
+                  <span
+                    class="inline-block w-3 h-3 border-2 border-walmart-blue border-t-transparent rounded-full animate-spin"
+                  ></span>
+                  Analyzing…
+                </span>
+              </template>
+            </span>
+            <button
+              x-show="phase === 'idle'"
+              type="button"
+              @click="clearFiles()"
+              class="text-xs text-danger hover:underline font-medium"
+            >
+              Clear all
+            </button>
+          </div>
+
+          <!-- Individual file rows -->
+          <template x-for="(f, idx) in fileStates" :key="f.name + idx">
+            <div
+              class="file-chip animate-scale-in"
+              style="flex-direction: column; align-items: stretch; gap: 0"
+            >
+              <div class="flex items-center gap-3">
+                <!-- File type icon -->
+                <div
+                  class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                  :style="f.name.endsWith('.pdf') ? 'background: #fef2f2; color: #ea1100;' : 'background: #eff6ff; color: #0053e2;'"
+                >
+                  <!-- Pending icon -->
+                  <template x-if="f.status === 'pending'">
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                      />
+                    </svg>
+                  </template>
+                  <!-- Uploading spinner -->
+                  <template x-if="f.status === 'uploading'">
+                    <svg
+                      class="w-4 h-4 animate-spin"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                      viewBox="0 0 24 24"
+                    >
+                      <path stroke-linecap="round" d="M12 3a9 9 0 019 9" />
+                    </svg>
+                  </template>
+                  <!-- Done checkmark -->
+                  <template x-if="f.status === 'done'">
+                    <svg
+                      class="w-4 h-4"
+                      fill="none"
+                      stroke="#2a8703"
+                      stroke-width="2.5"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M4.5 12.75l6 6 9-13.5"
+                      />
+                    </svg>
+                  </template>
+                  <!-- Analyzing brain -->
+                  <template x-if="f.status === 'analyzing'">
+                    <svg
+                      class="w-4 h-4 animate-pulse"
+                      fill="none"
+                      stroke="#0053e2"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"
+                      />
+                    </svg>
+                  </template>
+                </div>
+
+                <!-- File info -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="text-sm font-medium truncate"
+                      style="color: var(--text-primary)"
+                      x-text="f.name"
+                    ></span>
+                    <!-- Status label -->
+                    <span
+                      x-show="f.status === 'uploading'"
+                      class="text-[10px] font-bold uppercase tracking-wider text-walmart-blue"
+                      >Uploading</span
+                    >
+                    <span
+                      x-show="f.status === 'analyzing'"
+                      class="text-[10px] font-bold uppercase tracking-wider text-walmart-blue"
+                      >Analyzing</span
+                    >
+                    <span
+                      x-show="f.status === 'done'"
+                      class="text-[10px] font-bold uppercase tracking-wider text-success"
+                      >Done</span
+                    >
+                  </div>
+                  <div class="flex items-center gap-2 mt-0.5">
+                    <span
+                      class="text-xs font-mono"
+                      style="color: var(--text-tertiary)"
+                      x-text="f.sizeLabel"
+                    ></span>
+                    <span
+                      x-show="f.status === 'uploading' || f.status === 'done'"
+                      class="text-xs font-mono font-semibold"
+                      :class="f.progress >= 100 ? 'text-success' : 'text-walmart-blue'"
+                      x-text="Math.round(f.progress) + '%'"
+                    ></span>
+                  </div>
+                </div>
+
+                <!-- Remove button (only when idle) -->
+                <button
+                  x-show="phase === 'idle'"
+                  type="button"
+                  @click="removeFile(idx)"
+                  class="hover:text-danger transition-colors p-1 rounded-md hover:bg-red-50"
+                  style="color: var(--text-tertiary)"
+                  aria-label="Remove file"
+                >
+                  <svg
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Progress bar -->
+              <div
+                x-show="f.status !== 'pending'"
+                class="mt-2 h-1.5 w-full rounded-full overflow-hidden"
+                style="background: var(--border-light)"
+              >
+                <div
+                  class="h-full rounded-full transition-all duration-300 ease-out"
+                  :class="f.progress >= 100 ? 'bg-success' : 'bg-walmart-blue'"
+                  :style="'width:' + f.progress + '%'"
+                ></div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- Overall progress bar (during upload/analyze) -->
+      <template x-if="phase !== 'idle'">
+        <div class="mt-4 card" style="padding: 16px">
+          <div class="flex items-center justify-between mb-2">
+            <span
+              class="text-sm font-semibold"
+              style="color: var(--text-primary)"
+            >
+              <span x-show="phase === 'uploading'">Uploading files…</span>
+              <span x-show="phase === 'analyzing'" class="flex items-center gap-2">
+                <svg class="w-4 h-4 animate-pulse" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
+                AI Analysis
+              </span>
+            </span>
+            <span
+              class="text-xs font-mono font-semibold text-walmart-blue"
+              x-text="Math.round(overallProgress) + '%'"
+            ></span>
+          </div>
+          <div
+            class="h-2 w-full rounded-full overflow-hidden"
+            style="background: var(--border-light)"
+          >
+            <div
+              class="h-full rounded-full transition-all duration-300 ease-out"
+              :class="phase === 'analyzing' ? 'progress-bar-pulse' : 'bg-walmart-blue'"
+              :style="'width:' + overallProgress + '%'"
+            ></div>
+          </div>
+          <p class="text-xs mt-2" style="color: var(--text-tertiary)">
+            <span
+              x-show="phase === 'uploading'"
+              x-text="uploadedCount + ' of ' + files.length + ' uploaded'"
+            ></span>
+            <span x-show="phase === 'analyzing'" class="flex items-center gap-2">
+              <span class="inline-block w-1.5 h-1.5 rounded-full bg-walmart-blue analysis-pulse-dot"></span>
+              <span x-text="analysisStage || 'Analyzing...'"></span>
+            </span>
+          </p>
+        </div>
+      </template>
+    </div>
+
+    <!-- Submit -->
+    <div
+      class="flex items-center gap-4 animate-fade-in-up"
+      style="animation-delay: 400ms"
+    >
+      <button
+        type="submit"
+        class="btn-primary"
+        :disabled="!((jdMode === 'paste' && jd.trim().length > 20) || (jdMode === 'upload' && jdFile)) || files.length === 0 || phase !== 'idle'"
+      >
+        <template x-if="phase === 'idle'">
+          <span class="flex items-center gap-2">
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z"
+              />
+            </svg>
+            Analyze Resumes
+          </span>
+        </template>
+        <template x-if="phase !== 'idle'">
+          <span class="flex items-center gap-2">
+            <span
+              class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"
+            ></span>
+            <span
+              x-text="phase === 'uploading' ? 'Uploading…' : 'Analyzing…'"
+            ></span>
+          </span>
+        </template>
+      </button>
+      <span
+        class="text-sm"
+        style="color: var(--text-tertiary)"
+        x-show="files.length > 0 && phase === 'idle'"
+      >
+        Ready to analyze
+        <span class="font-semibold" x-text="files.length"></span> resume(s)
+      </span>
+    </div>
+  </form>
+
+  <!-- Results injected here -->
+  <div id="results-area" class="mt-8"></div>
+</div>
+
+<script>
+  function uploadForm() {
+    return {
+      role: "",
+      jd: "",
+      jdMode: 'paste', // 'paste' | 'upload'
+      jdFile: null,
+      jdFileName: '',
+      jdFileSize: '',
+      jdDragging: false,
+      jdPreviewing: false,
+      files: [],
+      fileStates: [],
+      dragging: false,
+      phase: "idle", // 'idle' | 'uploading' | 'analyzing'
+      overallProgress: 0,
+      uploadedCount: 0,
+      analysisStage: '',
+      jdTemplates: {},
+
+      analysisStages: [
+        { label: 'Uploading files…', min: 0, max: 90 },
+        { label: 'Parsing resumes…', min: 90, max: 93 },
+        { label: 'Extracting skills & matching…', min: 93, max: 96 },
+        { label: 'AI analysis & scoring…', min: 96, max: 99 },
+        { label: 'Finalizing results…', min: 99, max: 100 },
+      ],
+
+      init() {
+        // Load JD templates on mount
+        fetch("/api/jd-templates")
+          .then((r) => r.json())
+          .then((data) => {
+            this.jdTemplates = data;
+          })
+          .catch(() => {});
+      },
+
+      previewJD() {
+          if (this.jdPreviewing) return;
+          this.jdPreviewing = true;
+          
+          const fd = new FormData();
+          if (this.jdMode === 'upload' && this.jdFile) {
+              fd.append('job_description_file', this.jdFile);
+          } else {
+              fd.append('job_description', this.jd);
+          }
+          
+          fetch('/api/parse-jd', { method: 'POST', body: fd })
+              .then(r => r.text())
+              .then(html => {
+                  document.getElementById('jd-preview-area').innerHTML = html;
+                  this.jdPreviewing = false;
+              })
+              .catch(() => {
+                  this.jdPreviewing = false;
+                  document.getElementById('jd-preview-area').innerHTML = 
+                      '<p class="text-sm mt-2" style="color: #ef4444;">Preview failed. You can still proceed with analysis.</p>';
+              });
+      },
+
+      // --- JD mode & file management ---
+      setJdMode(mode) {
+        this.jdMode = mode;
+        if (mode === 'paste') {
+          this.jdFile = null;
+          this.jdFileName = '';
+          this.jdFileSize = '';
+        } else {
+          this.jd = '';
+        }
+      },
+
+      handleJdDrop(event) {
+        this.jdDragging = false;
+        const dropped = Array.from(event.dataTransfer.files).filter(
+          (f) => f.name.endsWith('.pdf') || f.name.endsWith('.docx'),
+        );
+        if (dropped.length > 0) this._setJdFile(dropped[0]);
+      },
+
+      handleJdFile(event) {
+        const files = Array.from(event.target.files);
+        if (files.length > 0) this._setJdFile(files[0]);
+      },
+
+      _setJdFile(file) {
+        this.jdFile = file;
+        this.jdFileName = file.name;
+        this.jdFileSize = (file.size / 1024 / 1024).toFixed(1) + ' MB';
+      },
+
+      clearJdFile() {
+        this.jdFile = null;
+        this.jdFileName = '';
+        this.jdFileSize = '';
+        if (this.$refs.jdFileInput) this.$refs.jdFileInput.value = '';
+      },
+
+      get jdValid() {
+        if (this.jdMode === 'paste') return this.jd.trim().length > 50;
+        return this.jdFile !== null;
+      },
+
+      // --- Resume file management ---
+      handleDrop(event) {
+        this.dragging = false;
+        const dropped = Array.from(event.dataTransfer.files).filter(
+          (f) => f.name.endsWith(".pdf") || f.name.endsWith(".docx"),
+        );
+        this.addFiles(dropped);
+      },
+
+      handleFiles(event) {
+        this.addFiles(Array.from(event.target.files));
+      },
+
+      addFiles(newFiles) {
+        const existing = new Set(this.files.map((f) => f.name));
+        for (const f of newFiles) {
+          if (!existing.has(f.name)) {
+            this.files.push(f);
+          }
+        }
+        this._rebuildFileStates();
+        this._syncInput();
+      },
+
+      removeFile(idx) {
+        this.files.splice(idx, 1);
+        this._rebuildFileStates();
+        this._syncInput();
+      },
+
+      clearFiles() {
+        this.files = [];
+        this._rebuildFileStates();
+        this._syncInput();
+      },
+
+      _rebuildFileStates() {
+        this.fileStates = this.files.map((f) => ({
+          name: f.name,
+          size: f.size,
+          sizeLabel: (f.size / 1024 / 1024).toFixed(1) + " MB",
+          status: "pending", // 'pending' | 'uploading' | 'done' | 'analyzing'
+          progress: 0,
+        }));
+      },
+
+      _syncInput() {
+        const dt = new DataTransfer();
+        this.files.forEach((f) => dt.items.add(f));
+        if (this.$refs.fileInput) {
+          this.$refs.fileInput.files = dt.files;
+        }
+      },
+
+      // --- Upload with real XHR progress ---
+      submitForm() {
+        const jdReady = (this.jdMode === 'paste' && this.jd.trim().length > 20)
+          || (this.jdMode === 'upload' && this.jdFile);
+        if (this.phase !== "idle" || !jdReady || !this.files.length)
+          return;
+
+        this.phase = "uploading";
+        this.overallProgress = 0;
+        this.uploadedCount = 0;
+
+        // Reset all file states to pending
+        this.fileStates.forEach((f) => {
+          f.status = "pending";
+          f.progress = 0;
+        });
+
+        // Build FormData
+        const fd = new FormData();
+        fd.append("role", this.role); // Can be empty string for "no role"
+        if (this.jdMode === 'upload' && this.jdFile) {
+          fd.append("job_description_file", this.jdFile);
+        } else {
+          fd.append("job_description", this.jd);
+        }
+        this.files.forEach((f) => fd.append("resumes", f));
+
+        // Compute cumulative size boundaries for per-file progress simulation
+        const totalSize = this.files.reduce((sum, f) => sum + f.size, 0) || 1;
+        const cumBounds = []; // [{start: 0, end: 0.3}, {start: 0.3, end: 0.7}, ...]
+        let cumPct = 0;
+        this.files.forEach((f) => {
+          const pct = f.size / totalSize;
+          cumBounds.push({ start: cumPct, end: cumPct + pct });
+          cumPct += pct;
+        });
+
+        const xhr = new XMLHttpRequest();
+        const self = this;
+
+        // --- Upload progress (fires as bytes leave the browser) ---
+        xhr.upload.addEventListener("progress", (e) => {
+          if (!e.lengthComputable) return;
+          const pct = e.loaded / e.total; // 0.0 → 1.0
+          self.overallProgress = Math.round(pct * 90); // Reserve last 10% for server-side analysis
+
+          // Distribute progress across individual files
+          let completedCount = 0;
+          for (let i = 0; i < self.fileStates.length; i++) {
+            const b = cumBounds[i];
+            if (pct >= b.end) {
+              // This file's bytes are fully sent
+              self.fileStates[i].progress = 100;
+              self.fileStates[i].status = "done";
+              completedCount++;
+            } else if (pct >= b.start) {
+              // Currently uploading this file
+              const filePct = (pct - b.start) / (b.end - b.start);
+              self.fileStates[i].progress = Math.round(filePct * 100);
+              self.fileStates[i].status = "uploading";
+            }
+            // else: still pending
+          }
+          self.uploadedCount = completedCount;
+        });
+
+        // --- Upload complete, server is now analyzing ---
+        xhr.upload.addEventListener("load", () => {
+          self.phase = "analyzing";
+          self.overallProgress = 90;
+          self.uploadedCount = self.files.length;
+          // Mark all files as analyzing
+          self.fileStates.forEach((f) => {
+            f.status = "analyzing";
+            f.progress = 100;
+          });
+          // Animate the remaining 10% with a slow fill
+          self._animateAnalyzing();
+        });
+
+        // --- Server response received ---
+        xhr.addEventListener("load", () => {
+          self.overallProgress = 100;
+          self.fileStates.forEach((f) => {
+            f.status = "done";
+            f.progress = 100;
+          });
+
+          // Small delay to show 100% before swapping in results
+          setTimeout(() => {
+            document.getElementById("results-area").innerHTML =
+              xhr.responseText;
+
+            // Execute scripts in response (innerHTML doesn't run them)
+            const resultsContainer = document.getElementById("results-area");
+            resultsContainer.querySelectorAll('script').forEach(oldScript => {
+              const newScript = document.createElement('script');
+              if (oldScript.src) {
+                newScript.src = oldScript.src;
+              } else {
+                newScript.textContent = oldScript.textContent;
+              }
+              oldScript.parentNode.replaceChild(newScript, oldScript);
+            });
+
+            // Initialize Alpine.js on new DOM
+            if (typeof Alpine !== 'undefined' && Alpine.initTree) {
+              Alpine.initTree(resultsContainer);
+            }
+
+            self.phase = "idle";
+            // Scroll to results
+            resultsContainer
+              .scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 400);
+        });
+
+        // --- Error handling ---
+        xhr.addEventListener("error", () => {
+          self.phase = "idle";
+          self._rebuildFileStates();
+          document.getElementById("results-area").innerHTML =
+            '<div class="rounded-2xl p-5" style="background: #fef2f2; border: 1px solid #fecaca;">' +
+            '<p class="font-semibold" style="color: #991b1b;">Upload failed. Please try again.</p></div>';
+        });
+
+        xhr.addEventListener("timeout", () => {
+          self.phase = "idle";
+          self._rebuildFileStates();
+          document.getElementById("results-area").innerHTML =
+            '<div class="rounded-2xl p-5" style="background: #fef2f2; border: 1px solid #fecaca;">' +
+            '<p class="font-semibold" style="color: #991b1b;">Request timed out. The AI analysis is taking longer than expected — try fewer resumes or restart the server.</p></div>';
+        });
+
+        xhr.open("POST", "/api/analyze");
+        xhr.timeout = 1800000; // 30 min for multi-resume LLM analysis
+        xhr.send(fd);
+      },
+
+      _animateAnalyzing() {
+        const stages = [
+          { pct: 92, label: 'Parsing resumes & extracting text...' },
+          { pct: 94, label: 'Extracting skills & matching against JD...' },
+          { pct: 96, label: 'Running AI semantic analysis...' },
+          { pct: 98, label: 'Generating insights & recommendations...' },
+        ];
+        let stageIdx = 0;
+        this.analysisStage = stages[0].label;
+        this.overallProgress = 90;
+
+        const interval = setInterval(() => {
+          if (this.phase !== 'analyzing') {
+            clearInterval(interval);
+            this.analysisStage = '';
+            return;
+          }
+          if (stageIdx < stages.length) {
+            const s = stages[stageIdx];
+            this.overallProgress = s.pct;
+            this.analysisStage = s.label;
+            stageIdx++;
+          }
+        }, 3000);
+      },
+    };
+  }
+
+  // --- Visual progress stepper ---
+  function updateSteps(role, jd, files, jdMode, jdFile) {
+    const s1 = document.getElementById("step-indicator-1");
+    const s2 = document.getElementById("step-indicator-2");
+    const s3 = document.getElementById("step-indicator-3");
+    const c1 = document.getElementById("connector-1");
+    const c2 = document.getElementById("connector-2");
+    if (!s1) return;
+
+    const checkSvg =
+      '<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>';
+    // Role is optional - always considered "set" (empty string means "no specific role")
+    const roleSet = true;
+    const jdSet = (jdMode === 'upload' && jdFile) || (jd && jd.trim().length > 20);
+    const filesSet = files && files.length > 0;
+
+    s1.className = roleSet ? "step-number step-number-complete" : "step-number";
+    s1.innerHTML = roleSet ? checkSvg : "1";
+    c1.className = roleSet
+      ? "step-connector mx-3 step-connector-active"
+      : "step-connector mx-3";
+
+    if (jdSet) {
+      s2.className = "step-number step-number-complete";
+      s2.innerHTML = checkSvg;
+    } else {
+      s2.className = roleSet
+        ? "step-number"
+        : "step-number step-number-inactive";
+      s2.innerHTML = "2";
+    }
+    c2.className = jdSet
+      ? "step-connector mx-3 step-connector-active"
+      : "step-connector mx-3";
+
+    if (filesSet) {
+      s3.className = "step-number step-number-complete";
+      s3.innerHTML = checkSvg;
+    } else {
+      s3.className = jdSet ? "step-number" : "step-number step-number-inactive";
+      s3.innerHTML = "3";
+    }
+  }
+</script>
+{% endblock %}

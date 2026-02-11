@@ -1,0 +1,92 @@
+{
+  "programming_languages": [
+    "python", "java", "javascript", "typescript", "c", "c++", "c#", "go",
+    "rust", "ruby", "php", "swift", "kotlin", "scala", "r", "matlab",
+    "perl", "lua", "dart", "elixir", "haskell", "objective-c", "groovy",
+    "shell", "bash", "powershell", "sql", "plsql", "nosql"
+  ],
+  "frontend": [
+    "react", "angular", "vue", "svelte", "next.js", "nuxt.js", "gatsby",
+    "html", "css", "sass", "less", "tailwind", "bootstrap", "material ui",
+    "jquery", "webpack", "vite", "redux", "zustand", "htmx", "alpine.js",
+    "storybook", "figma", "responsive design", "web accessibility"
+  ],
+  "backend": [
+    "node.js", "express", "fastapi", "django", "flask", "spring boot",
+    "spring", "rails", "laravel", "asp.net", ".net", "graphql", "rest api",
+    "grpc", "microservices", "serverless", "websocket", "oauth",
+    "jwt", "celery", "rabbitmq", "kafka", "redis"
+  ],
+  "databases": [
+    "mysql", "postgresql", "mongodb", "sqlite", "oracle", "sql server",
+    "dynamodb", "cassandra", "couchdb", "neo4j", "elasticsearch",
+    "firebase", "supabase", "mariadb", "cockroachdb", "influxdb"
+  ],
+  "cloud": [
+    "aws", "azure", "gcp", "google cloud", "heroku", "vercel", "netlify",
+    "cloudflare", "digitalocean", "lambda", "s3", "ec2", "ecs", "eks",
+    "cloud functions", "cloud run", "app engine", "bigquery"
+  ],
+  "devops": [
+    "docker", "kubernetes", "terraform", "ansible", "jenkins", "github actions",
+    "gitlab ci", "circleci", "travis ci", "helm", "prometheus", "grafana",
+    "datadog", "splunk", "nginx", "apache", "linux", "unix",
+    "ci/cd", "infrastructure as code", "monitoring"
+  ],
+  "data_science": [
+    "pandas", "numpy", "scipy", "matplotlib", "seaborn", "plotly",
+    "scikit-learn", "tensorflow", "pytorch", "keras", "xgboost",
+    "lightgbm", "nltk", "spacy", "hugging face", "opencv",
+    "deep learning", "machine learning", "neural networks", "nlp",
+    "computer vision", "data mining", "feature engineering",
+    "model deployment", "mlops", "data pipeline"
+  ],
+  "data_engineering": [
+    "spark", "hadoop", "hive", "airflow", "dbt", "snowflake",
+    "databricks", "etl", "data warehouse", "data lake", "data modeling",
+    "streaming", "batch processing", "data governance"
+  ],
+  "testing": [
+    "selenium", "cypress", "playwright", "jest", "pytest", "junit",
+    "testng", "cucumber", "postman", "api testing", "manual testing",
+    "automation testing", "regression testing", "load testing",
+    "performance testing", "unit testing", "integration testing",
+    "end-to-end testing", "test driven development", "bdd"
+  ],
+  "tools": [
+    "git", "github", "gitlab", "bitbucket", "jira", "confluence",
+    "slack", "notion", "trello", "asana", "linear",
+    "vs code", "intellij", "vim", "postman", "insomnia",
+    "swagger", "openapi"
+  ],
+  "data_visualization": [
+    "tableau", "power bi", "looker", "metabase", "superset",
+    "excel", "google sheets", "data visualization", "data analysis",
+    "data analytics", "business intelligence", "reporting"
+  ],
+  "methodologies": [
+    "agile", "scrum", "kanban", "waterfall", "lean", "devops",
+    "design patterns", "solid principles", "clean architecture",
+    "domain driven design", "event driven", "cqrs"
+  ],
+  "soft_skills": [
+    "leadership", "communication", "teamwork", "problem solving",
+    "critical thinking", "project management", "mentoring",
+    "stakeholder management", "presentation", "documentation",
+    "roadmap", "strategy", "cross functional"
+  ],
+  "analytics": [
+    "statistics", "probability", "hypothesis testing", "a/b testing",
+    "regression analysis", "forecasting", "time series", "clustering"
+  ],
+  "security": [
+    "cybersecurity", "penetration testing", "owasp", "encryption",
+    "ssl", "tls", "firewall", "vulnerability assessment",
+    "security audit", "compliance", "soc 2", "gdpr"
+  ],
+  "mobile": [
+    "react native", "flutter", "ios", "android", "xamarin",
+    "swiftui", "jetpack compose", "mobile development",
+    "app store", "google play"
+  ]
+}

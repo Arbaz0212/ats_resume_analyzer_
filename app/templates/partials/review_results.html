@@ -1,0 +1,363 @@
+<!-- Individual Resume Review Results -->
+<div class="space-y-6 animate-fade-in">
+
+  <!-- Overall Score Card -->
+  <div class="card" style="padding: 0; overflow: hidden;">
+    <div class="p-6" style="background: linear-gradient(135deg, {% if score >= 80 %}#ecfdf5, #d1fae5{% elif score >= 65 %}#eff6ff, #dbeafe{% elif score >= 50 %}#fffbeb, #fef3c7{% else %}#fef2f2, #fecaca{% endif %});">
+      <div class="flex items-center gap-6">
+        <!-- Score Ring -->
+        <div class="score-ring-container shrink-0" id="review-score-ring" style="width: 100px; height: 100px;"></div>
+        <div class="flex-1">
+          <h2 class="text-2xl font-bold" style="color: var(--text-primary)">
+            {% if score >= 80 %}Strong Resume ✨
+            {% elif score >= 65 %}Good Foundation 👍
+            {% elif score >= 50 %}Needs Improvement ⚠️
+            {% else %}Significant Gaps 🔴
+            {% endif %}
+          </h2>
+          <p class="text-sm mt-1" style="color: var(--text-secondary)">
+            {% if has_jd %}Scored against the provided job description{% else %}General resume quality assessment{% endif %}
+          </p>
+          {% if has_jd and result.decision %}
+          <span class="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold"
+                style="background: {{ '#ecfdf5' if result.decision_color == 'green' else '#eff6ff' if result.decision_color == 'blue' else '#fffbeb' if result.decision_color == 'amber' else '#fef2f2' }}; color: {{ '#065f46' if result.decision_color == 'green' else '#1e40af' if result.decision_color == 'blue' else '#92400e' if result.decision_color == 'amber' else '#991b1b' }};">
+            {{ result.decision }}
+          </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Dimension Breakdown -->
+    <div class="p-6 space-y-3">
+      <h3 class="text-sm font-semibold" style="color: var(--text-tertiary)">DIMENSION BREAKDOWN</h3>
+      {% set dimensions = [
+        ('Skills', result.section_scores.skills, 'Technical skill coverage'),
+        ('Experience', result.section_scores.experience, 'Work experience quality'),
+        ('Projects', result.section_scores.projects, 'Project portfolio strength'),
+        ('Education', result.section_scores.education, 'Educational background'),
+      ] %}
+      {% if has_jd %}
+        {% set dimensions = dimensions + [('JD Similarity', result.section_scores.similarity, 'Language alignment with JD')] %}
+      {% endif %}
+      {% for name, value, tooltip in dimensions %}
+      <div class="flex items-center gap-3">
+        <span class="text-xs font-medium w-24 shrink-0" style="color: var(--text-secondary)">{{ name }}</span>
+        <div class="flex-1 h-2 rounded-full overflow-hidden" style="background: var(--border-light)">
+          <div class="h-full rounded-full transition-all duration-700 ease-out"
+               style="width: {{ value }}%; background: {{ '#2a8703' if value >= 70 else '#0053e2' if value >= 50 else '#f59e0b' if value >= 30 else '#ea1100' }};"
+               title="{{ tooltip }}"></div>
+        </div>
+        <span class="text-xs font-mono font-bold w-10 text-right" style="color: {{ '#2a8703' if value >= 70 else '#ea1100' }};">{{ value | round(0) | int }}%</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Skills Analysis -->
+  <div class="card">
+    <h3 class="font-semibold mb-4 flex items-center gap-2" style="color: var(--text-primary)">
+      <svg class="w-5 h-5 text-walmart-blue" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+      </svg>
+      Skills Found in Your Resume
+    </h3>
+
+    {% if result.matched_skills %}
+    <div class="mb-4">
+      <p class="text-xs font-semibold mb-2" style="color: #2a8703;">
+        {% if has_jd %}✓ Matching JD Requirements ({{ result.matched_skills | length }}){% else %}✓ Detected Skills ({{ result.matched_skills | length }}){% endif %}
+      </p>
+      <div class="flex flex-wrap gap-1.5">
+        {% for s in result.matched_skills %}
+        <span class="px-2.5 py-1 rounded-lg text-xs font-medium" style="background: #ecfdf5; color: #065f46;">{{ s }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if has_jd and result.missing_skills %}
+    <div class="mb-4">
+      <p class="text-xs font-semibold mb-2" style="color: #ea1100;">✗ Missing from JD Requirements ({{ result.missing_skills | length }})</p>
+      <div class="flex flex-wrap gap-1.5">
+        {% for s in result.missing_skills %}
+        <span class="px-2.5 py-1 rounded-lg text-xs font-medium" style="background: #fef2f2; color: #991b1b;">{{ s }}</span>
+        {% endfor %}
+      </div>
+      <p class="text-xs mt-2" style="color: var(--text-tertiary)">💡 Consider adding these skills if you have experience with them</p>
+    </div>
+    {% endif %}
+
+    {% if result.extra_skills %}
+    <div>
+      <p class="text-xs font-semibold mb-2" style="color: #0053e2;">➕ Additional Skills ({{ result.extra_skills | length }})</p>
+      <div class="flex flex-wrap gap-1.5">
+        {% for s in result.extra_skills[:15] %}
+        <span class="px-2.5 py-1 rounded-lg text-xs font-medium" style="background: #eff6ff; color: #1e40af;">{{ s }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Keyword Analysis (LLM) -->
+  {% if result.llm_holistic_score %}
+  <div class="card">
+    <h3 class="font-semibold mb-4 flex items-center gap-2" style="color: var(--text-primary)">
+      <svg class="w-5 h-5" style="color: #6366f1;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+      </svg>
+      AI Deep Analysis
+      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background: linear-gradient(135deg, #ede9fe, #dbeafe); color: #5b21b6;">AI</span>
+    </h3>
+
+    {% if result.llm_holistic_score.reasoning %}
+    <p class="text-sm mb-4" style="color: var(--text-secondary); line-height: 1.7;">{{ result.llm_holistic_score.reasoning }}</p>
+    {% endif %}
+
+    <!-- Dimension Scores Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+      {% set ai_dims = [
+        ('Requirements', result.llm_holistic_score.requirement_fulfillment),
+        ('Experience', result.llm_holistic_score.experience_relevance),
+        ('Skill Depth', result.llm_holistic_score.skill_depth),
+        ('Projects', result.llm_holistic_score.project_alignment),
+      ] %}
+      {% for name, val in ai_dims %}
+      <div class="rounded-xl p-3 text-center" style="background: var(--surface-secondary);">
+        <p class="text-[10px] font-semibold uppercase tracking-wider" style="color: var(--text-tertiary);">{{ name }}</p>
+        <p class="text-xl font-bold mt-1" style="color: {{ '#2a8703' if val >= 70 else '#f59e0b' if val >= 50 else '#ea1100' }};">{{ val | round(0) | int }}%</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Keyword Match/Gap -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {% if result.llm_holistic_score.keyword_matches %}
+      <div>
+        <p class="text-xs font-semibold mb-2" style="color: #2a8703;">✓ Strong Keywords ({{ result.llm_holistic_score.keyword_matches | length }})</p>
+        <div class="flex flex-wrap gap-1">
+          {% for kw in result.llm_holistic_score.keyword_matches[:12] %}
+          <span class="px-2 py-0.5 rounded text-[11px] font-medium" style="background: #ecfdf5; color: #065f46;">{{ kw }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% if result.llm_holistic_score.keyword_gaps %}
+      <div>
+        <p class="text-xs font-semibold mb-2" style="color: #ea1100;">✗ Add These Keywords ({{ result.llm_holistic_score.keyword_gaps | length }})</p>
+        <div class="flex flex-wrap gap-1">
+          {% for kw in result.llm_holistic_score.keyword_gaps[:12] %}
+          <span class="px-2 py-0.5 rounded text-[11px] font-medium" style="background: #fef2f2; color: #991b1b;">{{ kw }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- AI Candidate Insight -->
+  {% if result.ai_insight %}
+  <div class="card">
+    <h3 class="font-semibold mb-4 flex items-center gap-2" style="color: var(--text-primary)">
+      <svg class="w-5 h-5" style="color: #6366f1;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18"/>
+      </svg>
+      Personalized Insights
+      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background: linear-gradient(135deg, #ede9fe, #dbeafe); color: #5b21b6;">AI</span>
+    </h3>
+
+    {% if result.ai_insight.fit_summary %}
+    <p class="text-sm mb-4" style="color: var(--text-secondary); line-height: 1.7;">{{ result.ai_insight.fit_summary }}</p>
+    {% endif %}
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {% if result.ai_insight.strengths %}
+      <div>
+        <p class="text-xs font-semibold mb-2" style="color: #2a8703;">💪 Your Strengths</p>
+        <ul class="space-y-1.5">
+          {% for s in result.ai_insight.strengths %}
+          <li class="text-sm flex items-start gap-2" style="color: var(--text-secondary);">
+            <span class="shrink-0 mt-0.5" style="color: #2a8703;">✓</span>
+            <span>{{ s }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if result.ai_insight.gaps %}
+      <div>
+        <p class="text-xs font-semibold mb-2" style="color: #f59e0b;">📋 Areas to Improve</p>
+        <ul class="space-y-1.5">
+          {% for g in result.ai_insight.gaps %}
+          <li class="text-sm flex items-start gap-2" style="color: var(--text-secondary);">
+            <span class="shrink-0 mt-0.5" style="color: #f59e0b;">→</span>
+            <span>{{ g }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Improvement Suggestions (the core value) -->
+  {% if result.improvement_suggestions %}
+  <div class="card" style="border: 2px solid #6366f1;">
+    <h3 class="font-semibold mb-2 flex items-center gap-2" style="color: var(--text-primary)">
+      <svg class="w-5 h-5" style="color: #6366f1;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
+      </svg>
+      Action Plan — How to Improve Your Resume
+      <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background: linear-gradient(135deg, #ede9fe, #dbeafe); color: #5b21b6;">AI</span>
+    </h3>
+
+    <!-- Potential Score -->
+    {% if result.improvement_suggestions.potential_score %}
+    <div class="flex items-center gap-3 mb-4 p-3 rounded-xl" style="background: #ecfdf5;">
+      <span class="text-sm" style="color: #065f46;">
+        📈 Implementing these suggestions could raise your score from
+        <strong>{{ result.improvement_suggestions.total_score | round(0) | int }}%</strong> to
+        <strong>~{{ result.improvement_suggestions.potential_score | round(0) | int }}%</strong>
+      </span>
+    </div>
+    {% endif %}
+
+    {% if result.improvement_suggestions.summary %}
+    <p class="text-sm mb-4" style="color: var(--text-secondary); line-height: 1.6;">{{ result.improvement_suggestions.summary }}</p>
+    {% endif %}
+
+    <!-- Individual Suggestions -->
+    <div class="space-y-4">
+      {% for sugg in result.improvement_suggestions.suggestions %}
+      <div class="rounded-xl p-4" style="background: var(--surface-secondary);" x-data="{ expanded: {{ 'true' if loop.index <= 2 else 'false' }} }">
+        <button @click="expanded = !expanded" class="w-full flex items-start gap-3 text-left">
+          <!-- Priority Badge -->
+          <span class="shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
+                style="background: {{ '#ea1100' if sugg.priority == 'critical' else '#f59e0b' if sugg.priority == 'high' else '#0053e2' if sugg.priority == 'medium' else '#9ca3af' }};">
+            {{ loop.index }}
+          </span>
+          <div class="flex-1">
+            <div class="flex items-center gap-2">
+              <span class="text-sm font-semibold" style="color: var(--text-primary);">{{ sugg.improvement | truncate(80) }}</span>
+              <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded"
+                    style="background: {{ '#fef2f2' if sugg.priority == 'critical' else '#fffbeb' if sugg.priority == 'high' else '#eff6ff' if sugg.priority == 'medium' else '#f3f4f6' }}; color: {{ '#991b1b' if sugg.priority == 'critical' else '#92400e' if sugg.priority == 'high' else '#1e40af' if sugg.priority == 'medium' else '#6b7280' }};">
+                {{ sugg.priority }}
+              </span>
+            </div>
+            <span class="text-xs" style="color: var(--text-tertiary);">Category: {{ sugg.category | replace('_', ' ') | title }}</span>
+          </div>
+          <svg class="w-4 h-4 shrink-0 mt-1 transition-transform" :class="expanded && 'rotate-180'" style="color: var(--text-tertiary)" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+          </svg>
+        </button>
+
+        <div x-show="expanded" x-transition class="mt-3 space-y-3">
+          <!-- Current State -->
+          {% if sugg.current_state %}
+          <div class="rounded-lg p-3" style="background: #fef2f2; border-left: 3px solid #ea1100;">
+            <p class="text-[10px] font-bold uppercase mb-1" style="color: #991b1b;">Current (Before)</p>
+            <p class="text-sm" style="color: #991b1b;">{{ sugg.current_state }}</p>
+          </div>
+          {% endif %}
+
+          <!-- Improved Version -->
+          {% if sugg.example %}
+          <div class="rounded-lg p-3" style="background: #ecfdf5; border-left: 3px solid #2a8703;">
+            <p class="text-[10px] font-bold uppercase mb-1" style="color: #065f46;">Suggested (After)</p>
+            <p class="text-sm" style="color: #065f46;">{{ sugg.example }}</p>
+          </div>
+          {% endif %}
+
+          <!-- Why it matters -->
+          {% if sugg.jd_relevance %}
+          <p class="text-xs" style="color: var(--text-tertiary);">
+            <strong>Why it matters:</strong> {{ sugg.jd_relevance }}
+          </p>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Career Trajectory (if available) -->
+  {% if result.career_trajectory %}
+  <div class="card" x-data="{ showTrajectory: false }">
+    <button @click="showTrajectory = !showTrajectory" class="w-full flex items-center justify-between">
+      <h3 class="font-semibold flex items-center gap-2" style="color: var(--text-primary)">
+        <svg class="w-5 h-5" style="color: #6366f1;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"/>
+        </svg>
+        Career Trajectory Analysis
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full" style="background: linear-gradient(135deg, #ede9fe, #dbeafe); color: #5b21b6;">AI</span>
+      </h3>
+      <svg class="w-4 h-4 transition-transform" :class="showTrajectory && 'rotate-180'" style="color: var(--text-tertiary)" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+      </svg>
+    </button>
+    <div x-show="showTrajectory" x-transition class="mt-4 space-y-3">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div class="rounded-xl p-3" style="background: var(--surface-secondary);">
+          <p class="text-[10px] font-semibold uppercase" style="color: var(--text-tertiary);">Progression</p>
+          <p class="text-sm font-semibold mt-1" style="color: var(--text-primary);">{{ result.career_trajectory.progression_type | replace('_', ' ') | title }}</p>
+        </div>
+        <div class="rounded-xl p-3" style="background: var(--surface-secondary);">
+          <p class="text-[10px] font-semibold uppercase" style="color: var(--text-tertiary);">Avg Tenure</p>
+          <p class="text-sm font-semibold mt-1" style="color: var(--text-primary);">{{ result.career_trajectory.average_tenure_months }} months</p>
+        </div>
+        <div class="rounded-xl p-3" style="background: var(--surface-secondary);">
+          <p class="text-[10px] font-semibold uppercase" style="color: var(--text-tertiary);">Growth Potential</p>
+          <p class="text-sm font-semibold mt-1" style="color: {{ '#2a8703' if result.career_trajectory.growth_potential == 'high' else '#f59e0b' if result.career_trajectory.growth_potential == 'medium' else '#ea1100' }};">{{ result.career_trajectory.growth_potential | title }}</p>
+        </div>
+      </div>
+      {% if result.career_trajectory.green_flags %}
+      <div>
+        <p class="text-xs font-semibold mb-1.5" style="color: #2a8703;">🟢 Positive Signals</p>
+        <ul class="space-y-1">
+          {% for flag in result.career_trajectory.green_flags %}
+          <li class="text-xs" style="color: var(--text-secondary);">✓ {{ flag }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if result.career_trajectory.red_flags %}
+      <div>
+        <p class="text-xs font-semibold mb-1.5" style="color: #f59e0b;">⚠️ Things to Address</p>
+        <ul class="space-y-1">
+          {% for flag in result.career_trajectory.red_flags %}
+          <li class="text-xs" style="color: var(--text-secondary);">→ {{ flag }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- No AI Banner -->
+  {% if not ai_enabled %}
+  <div class="rounded-2xl p-4 flex items-center gap-3" style="background: #fffbeb; border: 1px solid #fef3c7;">
+    <svg class="w-5 h-5 shrink-0" style="color: #92400e;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+    </svg>
+    <div>
+      <p class="text-sm font-semibold" style="color: #92400e;">AI features unavailable</p>
+      <p class="text-xs" style="color: #a16207;">Start Ollama for deep analysis, keyword insights, and personalized suggestions.</p>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Init score ring -->
+<script>
+(function() {
+  const el = document.getElementById('review-score-ring');
+  if (el && typeof createScoreRing === 'function') {
+    createScoreRing(el, {{ score }}, 100, 8);
+  }
+})();
+</script>

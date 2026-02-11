@@ -1,0 +1,64 @@
+<!-- Skeleton loading — content-shaped placeholders with shimmer animation -->
+<div class="space-y-6 animate-fade-in" aria-label="Loading results" role="status">
+  <span class="sr-only">Analyzing resumes…</span>
+
+  <!-- Summary banner skeleton -->
+  <div class="rounded-2xl p-5 flex items-start gap-4" style="background: var(--surface-secondary); border: 1px solid var(--border-light);">
+    <div class="w-10 h-10 rounded-xl skeleton shrink-0"></div>
+    <div class="flex-1 space-y-2">
+      <div class="h-5 w-48 skeleton"></div>
+      <div class="h-4 w-72 skeleton"></div>
+    </div>
+  </div>
+
+  <!-- Distribution chart skeleton -->
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <div class="h-5 w-32 skeleton"></div>
+      <div class="h-4 w-48 skeleton"></div>
+    </div>
+    <div class="space-y-3">
+      <div class="flex items-center gap-3">
+        <div class="h-4 w-24 skeleton"></div>
+        <div class="h-6 skeleton" style="width: 78%"></div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="h-4 w-24 skeleton"></div>
+        <div class="h-6 skeleton" style="width: 62%"></div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="h-4 w-24 skeleton"></div>
+        <div class="h-6 skeleton" style="width: 45%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Candidate card skeletons -->
+  <div>
+    <div class="flex items-center justify-between mb-4">
+      <div class="h-6 w-40 skeleton"></div>
+      <div class="h-4 w-32 skeleton"></div>
+    </div>
+    <div class="space-y-4">
+      {% for i in range(3) %}
+      <div class="card" style="animation: fadeInUp .5s var(--ease-out) both; animation-delay: {{ i * 100 }}ms;">
+        <div class="flex items-center gap-4">
+          <div class="w-14 h-14 rounded-full skeleton shrink-0"></div>
+          <div class="flex-1 space-y-2">
+            <div class="flex items-center gap-3">
+              <div class="h-5 w-8 skeleton rounded"></div>
+              <div class="h-5 w-40 skeleton"></div>
+              <div class="h-5 w-24 skeleton rounded-full"></div>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="h-4 w-20 skeleton"></div>
+              <div class="h-4 w-16 skeleton"></div>
+            </div>
+          </div>
+          <div class="w-5 h-5 skeleton rounded"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>

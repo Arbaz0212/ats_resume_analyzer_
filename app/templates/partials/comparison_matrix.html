@@ -1,0 +1,187 @@
+<!-- Candidate Comparison Matrix -->
+<div class="card" x-data="{ showMatrix: true }">
+  <button @click="showMatrix = !showMatrix" class="w-full flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #ede9fe, #dbeafe);">
+        <svg class="w-4 h-4" style="color: #6366f1;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
+        </svg>
+      </div>
+      <div class="text-left">
+        <h3 class="font-semibold" style="color: var(--text-primary)">Candidate Comparison Matrix</h3>
+        <p class="text-xs" style="color: var(--text-tertiary)">Side-by-side skill & dimension comparison</p>
+      </div>
+    </div>
+    <svg class="w-5 h-5 transition-transform duration-300" :class="showMatrix && 'rotate-180'" style="color: var(--text-tertiary)" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+    </svg>
+  </button>
+
+  <div x-show="showMatrix" x-transition class="mt-5">
+    <!-- Skill Gap Matrix Table -->
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr>
+            <th class="text-left py-2 px-3 font-semibold text-xs uppercase tracking-wider" style="color: var(--text-tertiary); border-bottom: 2px solid var(--border-default);">
+              JD Requirement
+            </th>
+            {% for c in results.all_candidates %}
+            <th class="text-center py-2 px-3 font-semibold text-xs" style="color: var(--text-secondary); border-bottom: 2px solid var(--border-default);">
+              <div class="truncate max-w-[120px]" title="{{ c.candidate }}">{{ c.candidate | replace('.pdf','') | replace('.docx','') }}</div>
+              <div class="text-[10px] font-bold mt-0.5" style="color: {{ '#2a8703' if c.final_score >= 80 else '#0053e2' if c.final_score >= 65 else '#ea1100' }};">
+                {{ c.final_score }}%
+              </div>
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% set all_skills_set = [] %}
+          {% for c in results.all_candidates %}
+            {% for s in c.matched_skills %}
+              {% if s not in all_skills_set %}{% if all_skills_set.append(s) %}{% endif %}{% endif %}
+            {% endfor %}
+            {% for s in c.missing_skills %}
+              {% if s not in all_skills_set %}{% if all_skills_set.append(s) %}{% endif %}{% endif %}
+            {% endfor %}
+          {% endfor %}
+          {% for skill in all_skills_set[:25] %}
+          <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
+            <td class="py-1.5 px-3 text-xs font-medium" style="color: var(--text-primary); border-bottom: 1px solid var(--border-light);">
+              {{ skill }}
+            </td>
+            {% for c in results.all_candidates %}
+            <td class="text-center py-1.5 px-3" style="border-bottom: 1px solid var(--border-light);">
+              {% if skill in c.matched_skills %}
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs" style="background: #ecfdf5; color: #2a8703;" title="Matched">✓</span>
+              {% elif skill in c.missing_skills %}
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs" style="background: #fef2f2; color: #ea1100;" title="Missing">✗</span>
+              {% else %}
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs" style="background: #f3f4f6; color: #9ca3af;" title="N/A">—</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Dimension Radar Comparison (Chart.js) -->
+    {% if results.all_candidates | length >= 2 and results.all_candidates | length <= 5 %}
+    <div class="mt-6 pt-4" style="border-top: 1px solid var(--border-light);">
+      <h4 class="text-sm font-semibold mb-3" style="color: var(--text-primary)">Dimension Comparison</h4>
+      <div style="height: 300px;">
+        <canvas id="radar-comparison-chart"></canvas>
+      </div>
+    </div>
+
+    <script>
+    (function() {
+      const ctx = document.getElementById('radar-comparison-chart');
+      if (!ctx) return;
+      
+      const colors = ['#6366f1', '#ec4899', '#14b8a6', '#f59e0b', '#ef4444'];
+      const candidates = [
+        {% for c in results.all_candidates[:5] %}
+        {
+          name: '{{ c.candidate | replace(".pdf","") | replace(".docx","") | truncate(20) }}',
+          scores: {
+            skills: {{ c.section_scores.skills | default(0) }},
+            experience: {{ c.section_scores.experience | default(0) }},
+            similarity: {{ c.section_scores.similarity | default(0) }},
+            projects: {{ c.section_scores.projects | default(0) }},
+            education: {{ c.section_scores.education | default(0) }},
+          }
+        },
+        {% endfor %}
+      ];
+
+      new Chart(ctx, {
+        type: 'radar',
+        data: {
+          labels: ['Skills', 'Experience', 'Similarity', 'Projects', 'Education'],
+          datasets: candidates.map((c, i) => ({
+            label: c.name,
+            data: [c.scores.skills, c.scores.experience, c.scores.similarity, c.scores.projects, c.scores.education],
+            borderColor: colors[i],
+            backgroundColor: colors[i] + '20',
+            borderWidth: 2,
+            pointRadius: 3,
+          }))
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            r: {
+              beginAtZero: true,
+              max: 100,
+              ticks: { stepSize: 20, font: { size: 10 } },
+              pointLabels: { font: { size: 11, weight: '600' } }
+            }
+          },
+          plugins: {
+            legend: { position: 'bottom', labels: { font: { size: 11 }, usePointStyle: true } }
+          }
+        }
+      });
+    })();
+    </script>
+    {% endif %}
+
+    <!-- LLM Comparative Analysis -->
+    {% if results.comparative_analysis %}
+    <div class="mt-6 pt-4" style="border-top: 1px solid var(--border-light);">
+      <h4 class="text-sm font-semibold mb-3" style="color: var(--text-primary)">
+        <span class="inline-flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" style="color: #6366f1;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+          </svg>
+          AI Hiring Recommendation
+        </span>
+      </h4>
+      
+      {% if results.comparative_analysis.stack_rank_justification %}
+      <p class="text-sm mb-3" style="color: var(--text-secondary); line-height: 1.6;">{{ results.comparative_analysis.stack_rank_justification }}</p>
+      {% endif %}
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+        {% if results.comparative_analysis.best_for_technical %}
+        <div class="rounded-xl p-3" style="background: var(--surface-secondary);">
+          <p class="text-[10px] font-semibold uppercase tracking-wider mb-1" style="color: var(--text-tertiary);">Best Technical</p>
+          <p class="text-sm font-semibold" style="color: var(--text-primary);">{{ results.comparative_analysis.best_for_technical }}</p>
+        </div>
+        {% endif %}
+        {% if results.comparative_analysis.best_for_experience %}
+        <div class="rounded-xl p-3" style="background: var(--surface-secondary);">
+          <p class="text-[10px] font-semibold uppercase tracking-wider mb-1" style="color: var(--text-tertiary);">Best Experience</p>
+          <p class="text-sm font-semibold" style="color: var(--text-primary);">{{ results.comparative_analysis.best_for_experience }}</p>
+        </div>
+        {% endif %}
+        {% if results.comparative_analysis.best_overall %}
+        <div class="rounded-xl p-3" style="background: linear-gradient(135deg, #ecfdf5, #dbeafe);">
+          <p class="text-[10px] font-semibold uppercase tracking-wider mb-1" style="color: #065f46;">🏆 Best Overall</p>
+          <p class="text-sm font-semibold" style="color: #065f46;">{{ results.comparative_analysis.best_overall }}</p>
+        </div>
+        {% endif %}
+      </div>
+
+      {% if results.comparative_analysis.differentiation_factors %}
+      <div class="mt-3">
+        <p class="text-xs font-semibold mb-1.5" style="color: var(--text-tertiary);">Key Differentiators:</p>
+        <ul class="space-y-1">
+          {% for factor in results.comparative_analysis.differentiation_factors %}
+          <li class="text-xs flex items-start gap-2" style="color: var(--text-secondary);">
+            <span class="shrink-0 mt-0.5">→</span>
+            <span>{{ factor }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>

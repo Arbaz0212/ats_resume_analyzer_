@@ -1,0 +1,1120 @@
+<!-- Results Content (injected by HTMX into #results-area) -->
+<div class="space-y-8 animate-fade-in" x-data="{ activeTab: 'overview' }">
+
+  <!-- Success Banner -->
+  <div class="rounded-2xl p-5 flex items-start gap-4" style="background: #ecfdf5; border: 1px solid #bbf7d0;">
+    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background: #2a8703;">
+      <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+      </svg>
+    </div>
+    <div class="flex-1">
+      <div class="flex items-center gap-3">
+        <h3 class="font-semibold" style="color: #166534;">Analysis Complete</h3>
+        {% if results.ai_enabled %}
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold" style="background: linear-gradient(135deg, #ede9fe, #dbeafe); color: #5b21b6;">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+          AI-Powered
+        </span>
+        {% endif %}
+      </div>
+      <p class="text-sm" style="color: #15803d;">{{ results.total_resumes }} resume(s) scored against <strong>{{ results.job_role | title }}</strong> job description
+        {% if results.ai_enabled %}— with semantic analysis &amp; LLM insights{% endif %}
+      </p>
+    </div>
+  </div>
+
+  {% if results.errors %}
+  <div class="rounded-2xl p-5" style="background: #fef2f2; border: 1px solid #fecaca;">
+    <h4 class="font-semibold mb-2" style="color: #991b1b;">Some files had issues:</h4>
+    <ul class="list-disc list-inside text-sm space-y-1" style="color: #dc2626;">
+      {% for err in results.errors %}
+      <li>{{ err }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <!-- Results Tab Navigation -->
+  <div class="flex gap-1 p-1 rounded-xl" style="background: var(--surface-secondary);">
+    <button @click="activeTab = 'overview'" 
+            class="flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all"
+            :class="activeTab === 'overview' ? 'jd-toggle-active' : 'jd-toggle-inactive'">
+      📊 Overview
+    </button>
+    <button @click="activeTab = 'candidates'" 
+            class="flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all"
+            :class="activeTab === 'candidates' ? 'jd-toggle-active' : 'jd-toggle-inactive'">
+      👤 Candidates ({{ results.all_candidates | length }})
+    </button>
+    <button @click="activeTab = 'qualified'" 
+            class="flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all"
+            :class="activeTab === 'qualified' ? 'jd-toggle-active' : 'jd-toggle-inactive'">
+      ✅ Qualified ({{ results.all_candidates | selectattr('decision', 'in', ['strong_hire', 'lean_hire']) | list | length }})
+    </button>
+    {% if results.all_candidates | length >= 2 %}
+    <button @click="activeTab = 'comparison'" 
+            class="flex-1 px-4 py-2 text-sm font-medium rounded-lg transition-all"
+            :class="activeTab === 'comparison' ? 'jd-toggle-active' : 'jd-toggle-inactive'">
+      ⚖️ Compare
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- === OVERVIEW TAB === -->
+  <div x-show="activeTab === 'overview'" x-transition>
+
+  <!-- AI Executive Summary -->
+  {% if results.ai_summary %}
+  {% include "partials/ai_executive_summary.html" %}
+  {% endif %}
+
+  <!-- Score Distribution Chart -->
+  {% if results.all_candidates | length >= 1 %}
+  <div class="card">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="font-semibold" style="color: var(--text-primary)">JD Fit Scores</h3>
+      <span class="text-xs font-mono" style="color: var(--text-tertiary)">Each bar = how well that resume matches this JD</span>
+    </div>
+    <div style="height: {{ [results.all_candidates | length * 40 + 40, 120] | max }}px; max-height: 400px;">
+      <canvas id="distribution-chart"></canvas>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Skill Gap Heatmap -->
+  {% if results.all_candidates | length >= 1 %}
+  {% set all_skills = [] %}
+  {% for c in results.all_candidates %}
+    {% for s in c.matched_skills + c.missing_skills %}
+      {% if s not in all_skills %}{% if all_skills.append(s) %}{% endif %}{% endif %}
+    {% endfor %}
+  {% endfor %}
+  <div class="card" x-data="{ showHeatmap: false }">
+    <button @click="showHeatmap = !showHeatmap" class="w-full flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: var(--wm-blue-subtle)">
+          <svg class="w-4 h-4 text-walmart-blue" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 0v.375" />
+          </svg>
+        </div>
+        <div class="text-left">
+          <h3 class="font-semibold" style="color: var(--text-primary)">Skill Gap Heatmap</h3>
+          <p class="text-xs" style="color: var(--text-tertiary)">{{ all_skills | length }} skills × {{ results.all_candidates | length }} candidates</p>
+        </div>
+      </div>
+      <svg class="w-5 h-5 transition-transform duration-300" :class="showHeatmap && 'rotate-180'" style="color: var(--text-tertiary)" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+      </svg>
+    </button>
+    <div x-show="showHeatmap" x-transition class="mt-4 overflow-x-auto">
+      <table class="w-full text-xs" style="border-collapse: separate; border-spacing: 2px;">
+        <thead>
+          <tr>
+            <th class="text-left p-2 font-semibold sticky left-0 z-10" style="color: var(--text-secondary); background: var(--surface-primary); min-width: 100px;">Skill</th>
+            {% for c in results.all_candidates %}
+            <th class="p-2 font-semibold text-center" style="color: var(--text-secondary); min-width: 80px;" title="{{ c.candidate }}">
+              {{ c.candidate | replace('.pdf','') | replace('.docx','') | truncate(12) }}
+            </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for skill in all_skills | sort %}
+          <tr>
+            <td class="p-2 font-mono font-medium sticky left-0 z-10" style="color: var(--text-primary); background: var(--surface-primary);">{{ skill }}</td>
+            {% for c in results.all_candidates %}
+            <td class="p-2 text-center rounded"
+                style="{% if skill in c.matched_skills %}background: #dcfce7; color: #166534;{% elif skill in c.missing_skills %}background: #fef2f2; color: #991b1b;{% else %}background: var(--surface-secondary); color: var(--text-tertiary);{% endif %}">
+              {% if skill in c.matched_skills %}✓{% elif skill in c.missing_skills %}✗{% else %}–{% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <div class="flex items-center gap-4 mt-3 text-xs" style="color: var(--text-tertiary)">
+        <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded" style="background: #dcfce7;"></span> Has skill</span>
+        <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded" style="background: #fef2f2;"></span> Missing</span>
+        <span class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded" style="background: var(--surface-secondary);"></span> Not required</span>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  </div><!-- /OVERVIEW TAB -->
+
+  <!-- === COMPARISON TAB === -->
+  <div x-show="activeTab === 'comparison'" x-transition>
+
+  <!-- Candidate Comparison Matrix (2+ candidates) -->
+  {% if results.all_candidates | length >= 2 %}
+  {% include "partials/comparison_matrix.html" %}
+  {% endif %}
+
+  <!-- Side-by-Side Comparison -->
+  {% if results.all_candidates | length >= 2 %}
+  <div class="card" x-data="comparePanel()">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: #ede9fe;">
+          <svg class="w-4 h-4" style="color: #7c3aed;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-semibold" style="color: var(--text-primary)">Compare Candidates</h3>
+          <p class="text-xs" style="color: var(--text-tertiary)">Select 2-3 candidates to compare side by side</p>
+        </div>
+      </div>
+      <button @click="showCompare = !showCompare" class="btn-ghost text-xs">
+        <span x-text="showCompare ? 'Hide' : 'Show'"></span>
+      </button>
+    </div>
+    <div x-show="showCompare" x-transition>
+      <!-- Candidate selection -->
+      <div class="flex flex-wrap gap-2 mb-4">
+        {% for c in results.all_candidates %}
+        <label class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer text-sm transition-all"
+               :class="selected.includes({{ loop.index0 }}) ? 'font-semibold' : ''"
+               :style="selected.includes({{ loop.index0 }}) ? 'background: var(--wm-blue-subtle); border: 1.5px solid var(--wm-blue);' : 'background: var(--surface-secondary); border: 1.5px solid var(--border-default);'">
+          <input type="checkbox" :checked="selected.includes({{ loop.index0 }})" @change="toggle({{ loop.index0 }})" class="sr-only" />
+          <span class="w-4 h-4 rounded flex items-center justify-center text-[10px]"
+                :style="selected.includes({{ loop.index0 }}) ? 'background: var(--wm-blue); color: white;' : 'background: var(--surface-tertiary);'">
+            <span x-show="selected.includes({{ loop.index0 }})">✓</span>
+          </span>
+          <span style="color: var(--text-primary)">{{ c.candidate | replace('.pdf','') | replace('.docx','') | truncate(20) }}</span>
+          <span class="font-mono text-xs" :style="selected.includes({{ loop.index0 }}) ? 'color: var(--wm-blue);' : 'color: var(--text-tertiary);'">{{ c.final_score }}%</span>
+        </label>
+        {% endfor %}
+      </div>
+      <!-- Comparison table -->
+      <div x-show="selected.length >= 2" x-transition class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr>
+              <th class="compare-header text-left">Dimension</th>
+              <template x-for="idx in selected" :key="idx">
+                <th class="compare-header text-center" x-text="candidates[idx].candidate.replace(/\.[^.]+$/, '').slice(0, 18)"></th>
+              </template>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="dim in ['final_score', 'skills', 'similarity', 'experience', 'education', 'projects']" :key="dim">
+              <tr>
+                <td class="compare-cell font-medium capitalize" style="color: var(--text-secondary)" x-text="dim === 'final_score' ? 'Overall Fit' : dim"></td>
+                <template x-for="idx in selected" :key="dim+'-'+idx">
+                  <td class="compare-cell text-center font-mono font-semibold">
+                    <span :class="getScoreClass(dim === 'final_score' ? candidates[idx].final_score : candidates[idx].section_scores[dim])">
+                      <span x-text="(dim === 'final_score' ? candidates[idx].final_score : candidates[idx].section_scores[dim]) + (dim === 'final_score' ? '%' : '')"></span>
+                    </span>
+                  </td>
+                </template>
+              </tr>
+            </template>
+            <tr>
+              <td class="compare-cell font-medium" style="color: var(--text-secondary)">Skills Matched</td>
+              <template x-for="idx in selected" :key="'skills-'+idx">
+                <td class="compare-cell text-center font-mono" style="color: var(--text-primary)" x-text="candidates[idx].skill_match_ratio"></td>
+              </template>
+            </tr>
+            <tr>
+              <td class="compare-cell font-medium" style="color: var(--text-secondary)">Decision</td>
+              <template x-for="idx in selected" :key="'dec-'+idx">
+                <td class="compare-cell text-center">
+                  <span class="decision-badge" :class="'decision-' + candidates[idx].decision_color" x-text="candidates[idx].decision"></span>
+                </td>
+              </template>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p x-show="selected.length < 2" class="text-sm text-center py-4" style="color: var(--text-tertiary)">Select at least 2 candidates above to compare</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- AI Comparative Analysis -->
+  {% if results.comparative_analysis %}
+  <div class="card" x-data="{ showComparative: false }">
+    <button @click="showComparative = !showComparative" class="w-full flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #7c3aed, #2563eb);">
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+          </svg>
+        </div>
+        <div class="text-left">
+          <h3 class="font-semibold" style="color: var(--text-primary)">AI Stack Ranking</h3>
+          <p class="text-xs" style="color: var(--text-tertiary)">
+            Recommendation: <strong>{{ results.comparative_analysis.hiring_recommendation | replace('_', ' ') | title }}</strong>
+            • Best Overall: <strong>{{ results.comparative_analysis.best_overall }}</strong>
+          </p>
+        </div>
+      </div>
+      <svg class="w-5 h-5 transition-transform duration-300" :class="showComparative && 'rotate-180'" style="color: var(--text-tertiary)" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+      </svg>
+    </button>
+
+    <div x-show="showComparative" x-transition class="mt-4 space-y-4">
+      <!-- Dimension Winners -->
+      <div class="grid sm:grid-cols-3 gap-3">
+        <div class="p-3 rounded-lg" style="background: var(--surface-secondary);">
+          <p class="text-xs font-semibold" style="color: var(--text-tertiary);">Best Technical</p>
+          <p class="font-semibold truncate" style="color: var(--text-primary);">{{ results.comparative_analysis.best_for_technical }}</p>
+        </div>
+        <div class="p-3 rounded-lg" style="background: var(--surface-secondary);">
+          <p class="text-xs font-semibold" style="color: var(--text-tertiary);">Best Experience</p>
+          <p class="font-semibold truncate" style="color: var(--text-primary);">{{ results.comparative_analysis.best_for_experience }}</p>
+        </div>
+        <div class="p-3 rounded-lg" style="background: var(--surface-secondary);">
+          <p class="text-xs font-semibold" style="color: var(--text-tertiary);">Best Culture Fit</p>
+          <p class="font-semibold truncate" style="color: var(--text-primary);">{{ results.comparative_analysis.best_for_culture }}</p>
+        </div>
+      </div>
+
+      <!-- Justification -->
+      <div class="p-3 rounded-lg" style="background: var(--surface-secondary);">
+        <p class="text-sm" style="color: var(--text-secondary);">{{ results.comparative_analysis.stack_rank_justification }}</p>
+      </div>
+
+      <!-- Differentiation Factors -->
+      {% if results.comparative_analysis.differentiation_factors %}
+      <div>
+        <p class="text-xs font-semibold mb-2" style="color: var(--text-tertiary);">Key Differentiators</p>
+        <ul class="text-sm space-y-1" style="color: var(--text-secondary);">
+          {% for factor in results.comparative_analysis.differentiation_factors %}
+          <li>• {{ factor }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  </div><!-- /COMPARISON TAB -->
+
+  <!-- === QUALIFIED TAB === -->
+  <div x-show="activeTab === 'qualified'" x-transition>
+    {% set qualified = results.all_candidates | selectattr('decision', 'in', ['strong_hire', 'lean_hire']) | list %}
+    
+    {% if qualified | length == 0 %}
+    <div class="card text-center py-12">
+      <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style="background: #fef2f2;">
+        <svg class="w-8 h-8" style="color: #ea1100;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold mb-2" style="color: var(--text-primary);">No Qualified Candidates</h3>
+      <p class="text-sm" style="color: var(--text-tertiary);">None of the {{ results.all_candidates | length }} candidates met the qualification threshold for this JD.</p>
+      <p class="text-xs mt-2" style="color: var(--text-tertiary);">Consider broadening the job requirements or expanding your candidate pool.</p>
+    </div>
+    {% else %}
+    
+    <!-- Qualified Summary -->
+    <div class="rounded-2xl p-5 mb-6" style="background: #ecfdf5; border: 1px solid #bbf7d0;">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: #2a8703;">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h3 class="font-semibold" style="color: #166534;">{{ qualified | length }} of {{ results.all_candidates | length }} candidates qualified</h3>
+          <p class="text-sm" style="color: #15803d;">These candidates meet the minimum requirements for this role</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Qualified Candidate Cards -->
+    <div class="space-y-4">
+      {% for c in qualified %}
+      <div class="card" style="border-left: 4px solid {{ '#2a8703' if c.decision == 'strong_hire' else '#0053e2' }};">
+        <div class="flex items-center gap-4">
+          <!-- Rank Badge -->
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" 
+               style="background: {{ '#ecfdf5' if c.decision == 'strong_hire' else '#eff6ff' }};">
+            <span class="text-sm font-bold" style="color: {{ '#2a8703' if c.decision == 'strong_hire' else '#0053e2' }};">#{{ loop.index }}</span>
+          </div>
+          
+          <!-- Info -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h4 class="font-semibold truncate" style="color: var(--text-primary);">{{ c.candidate }}</h4>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase"
+                    style="background: {{ '#ecfdf5' if c.decision == 'strong_hire' else '#eff6ff' }}; color: {{ '#065f46' if c.decision == 'strong_hire' else '#1e40af' }};">
+                {{ c.decision | replace('_', ' ') | title }}
+              </span>
+            </div>
+            <div class="flex items-center gap-4 mt-1 text-xs" style="color: var(--text-tertiary);">
+              <span>Skills: {{ c.skill_match_ratio }}</span>
+              <span>Experience: {{ c.section_scores.experience | round(0) | int }}%</span>
+              {% if c.ai_insight and c.ai_insight.fit_summary %}
+              <span class="truncate max-w-xs">{{ c.ai_insight.fit_summary | truncate(80) }}</span>
+              {% endif %}
+            </div>
+          </div>
+          
+          <!-- Score -->
+          <div class="text-right shrink-0">
+            <div class="text-2xl font-black font-mono" style="color: {{ '#2a8703' if c.final_score >= 80 else '#0053e2' if c.final_score >= 65 else '#ffc220' }};">
+              {{ c.final_score | round(1) }}
+            </div>
+            <div class="text-[10px] font-semibold uppercase" style="color: var(--text-tertiary);">JD FIT</div>
+          </div>
+        </div>
+        
+        <!-- Skills Preview -->
+        {% if c.matched_skills %}
+        <div class="mt-3 pt-3" style="border-top: 1px solid var(--border-light);">
+          <div class="flex flex-wrap gap-1">
+            {% for s in c.matched_skills[:10] %}
+            <span class="px-2 py-0.5 rounded text-[10px] font-medium" style="background: #ecfdf5; color: #065f46;">✓ {{ s }}</span>
+            {% endfor %}
+            {% if c.matched_skills | length > 10 %}
+            <span class="px-2 py-0.5 rounded text-[10px] font-medium" style="background: var(--surface-secondary); color: var(--text-tertiary);">+{{ c.matched_skills | length - 10 }} more</span>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- === CANDIDATES TAB (visible in overview + candidates) === -->
+  <div x-show="activeTab === 'candidates' || activeTab === 'overview'" x-transition>
+
+  <!-- Candidate Rankings -->
+  <div>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-bold" style="color: var(--text-primary)">Candidates ({{ results.all_candidates | length }})</h2>
+      <span class="text-xs hidden sm:inline" style="color: var(--text-tertiary)">Ranked by JD fit score · <kbd class="font-mono px-1.5 py-0.5 rounded text-[10px]" style="background: var(--surface-tertiary); border: 1px solid var(--border-default);">↑↓</kbd> navigate · <kbd class="font-mono px-1.5 py-0.5 rounded text-[10px]" style="background: var(--surface-tertiary); border: 1px solid var(--border-default);">Enter</kbd> expand</span>
+    </div>
+    <div class="space-y-4" id="candidates-list">
+      {% for c in results.all_candidates %}
+      <div class="card-interactive animate-slide-up"
+           style="animation-delay: {{ loop.index0 * 60 }}ms"
+           onclick="toggleCandidate({{ loop.index0 }})"
+           id="candidate-card-{{ loop.index0 }}"
+           role="button"
+           tabindex="0"
+           aria-expanded="false"
+           aria-label="{{ c.candidate }} — {{ c.final_score }}% fit score"
+           @keydown.enter.prevent="toggleCandidate({{ loop.index0 }})">
+
+        <!-- Candidate Header -->
+        <div class="flex items-center gap-4">
+          <div class="score-ring shrink-0" id="ring-{{ loop.index0 }}" data-score="{{ c.final_score }}"
+            style="width: 56px; height: 56px;"></div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-3 flex-wrap">
+              <span class="text-xs font-bold font-mono px-2 py-0.5 rounded-md
+                {% if loop.index <= 3 %}" style="background: rgba(255,194,32,.15); color: #995213;"
+                {% else %}" style="background: var(--surface-tertiary); color: var(--text-tertiary);"
+                {% endif %}>
+                #{{ loop.index }}
+              </span>
+              <h3 class="font-semibold truncate" style="color: var(--text-primary)">{{ c.candidate }}</h3>
+              <span class="decision-badge decision-{{ c.decision_color }}">{{ c.decision }}</span>
+              {% if c.ai_insight %}
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+                style="background: linear-gradient(135deg, #ede9fe, #dbeafe); color: #5b21b6;">
+                <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>
+                AI
+              </span>
+              {% endif %}
+              {% if c.similarity_method == 'semantic' %}
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded" style="background: #dbeafe; color: #1e40af;">semantic</span>
+              {% endif %}
+              {% if c.match_type and c.match_type != 'exact' %}
+              <span class="match-type-badge match-{{ c.match_type }}">
+                {% if c.match_type == 'overqualified' %}Overqualified{% elif c.match_type == 'underqualified' %}Underqualified{% endif %}
+              </span>
+              {% endif %}
+            </div>
+            <div class="mt-1.5 flex items-center gap-4 text-xs" style="color: var(--text-tertiary)">
+              <span>Skills: <strong class="font-mono" style="color: var(--text-secondary)">{{ c.skill_match_ratio }}</strong></span>
+              <span>•</span>
+              <span>Fit: <strong class="font-mono
+                {% if c.final_score >= 80 %}text-success{% elif c.final_score >= 65 %}text-walmart-blue{% elif c.final_score >= 50 %}text-warning{% else %}text-danger{% endif %}">{{ c.final_score }}%</strong></span>
+              {% if c.ai_insight %}
+              <span>•</span>
+              <span class="truncate max-w-[300px]" style="color: var(--text-tertiary)" title="{{ c.ai_insight.fit_summary }}">{{ c.ai_insight.fit_summary[:80] }}{% if c.ai_insight.fit_summary | length > 80 %}…{% endif %}</span>
+              {% endif %}
+            </div>
+          </div>
+          <svg class="w-5 h-5 transition-transform duration-300" style="color: var(--text-tertiary)" id="chevron-{{ loop.index0 }}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </div>
+
+        <!-- Expanded Detail -->
+        <div class="mt-6 pt-6 hidden" style="border-top: 1px solid var(--border-light)" id="detail-{{ loop.index0 }}">
+
+          <!-- AI Insight Panel (prominent, at the top of expansion) -->
+          {% if c.ai_insight %}
+          {% include "partials/ai_candidate_insight.html" %}
+          {% endif %}
+
+          <!-- Red Flags Alert (critical/high only) -->
+          {% if c.red_flags and c.red_flags.risk_level in ['high', 'critical'] %}
+          <div class="mb-6 rounded-xl p-4" style="background: #fef2f2; border: 1px solid #fecaca;">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: #ea1100;">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <div>
+                <h4 class="font-semibold" style="color: #991b1b;">Red Flags Detected</h4>
+                <p class="text-xs" style="color: #dc2626;">Risk Level: {{ c.red_flags.risk_level | upper }}</p>
+              </div>
+            </div>
+            <ul class="space-y-2 mb-3">
+              {% for flag in c.red_flags.critical_flags %}
+              <li class="text-sm p-2 rounded" style="background: #fee2e2;">
+                <strong style="color: #991b1b;">{{ flag.flag }}:</strong>
+                <span style="color: #7f1d1d;">{{ flag.evidence }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+            {% if c.red_flags.interview_focus_areas %}
+            <p class="text-xs" style="color: #991b1b;">
+              <strong>Interview Focus:</strong> {{ c.red_flags.interview_focus_areas | join(', ') }}
+            </p>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <!-- Multi-Dimensional Fit Analysis -->
+          {% if c.candidate_fit %}
+          <div class="mb-6 rounded-xl p-4" style="background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 1px solid #bae6fd;">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: #0284c7;">
+                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5m.75-9l3-3 2.148 2.148A12.061 12.061 0 0116.5 7.605" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 class="font-semibold" style="color: #075985;">Multi-Dimensional Fit</h4>
+                  <p class="text-xs" style="color: #0369a1;">Overall: {{ c.candidate_fit.overall_fit }}% • Confidence: {{ c.candidate_fit.hiring_confidence | title }}</p>
+                </div>
+              </div>
+              <span class="px-2 py-1 rounded text-xs font-semibold"
+                style="{% if c.candidate_fit.ideal_for_role %}background: #dcfce7; color: #166534;{% else %}background: #f3f4f6; color: #6b7280;{% endif %}">
+                {% if c.candidate_fit.ideal_for_role %}Ideal Candidate{% else %}{{ c.candidate_fit.compensation_tier | title }} Level{% endif %}
+              </span>
+            </div>
+
+            <!-- Fit Dimensions Bar Chart -->
+            <div class="space-y-2 mb-3">
+              {% set fit_dims = [
+                ('Technical', c.candidate_fit.technical_fit),
+                ('Experience', c.candidate_fit.experience_fit),
+                ('Domain', c.candidate_fit.domain_fit),
+                ('Seniority', c.candidate_fit.seniority_fit),
+                ('Culture', c.candidate_fit.culture_indicators),
+                ('Growth', c.candidate_fit.growth_potential)
+              ] %}
+              {% for name, score in fit_dims %}
+              <div class="flex items-center gap-2">
+                <span class="text-xs w-20 text-right" style="color: #0369a1;">{{ name }}</span>
+                <div class="flex-1 h-3 rounded-full overflow-hidden" style="background: #e0f2fe;">
+                  <div class="h-full rounded-full transition-all"
+                    style="width: {{ score }}%; background: {% if score >= 70 %}#22c55e{% elif score >= 50 %}#0284c7{% else %}#f59e0b{% endif %};"></div>
+                </div>
+                <span class="text-xs font-mono w-10" style="color: #075985;">{{ score }}%</span>
+              </div>
+              {% endfor %}
+            </div>
+
+            {% if c.candidate_fit.unique_value %}
+            <p class="text-sm p-2 rounded" style="background: white; color: #075985;">
+              <strong>Unique Value:</strong> {{ c.candidate_fit.unique_value }}
+            </p>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <!-- Achievement Highlights -->
+          {% if c.achievement_analysis and c.achievement_analysis.top_achievements %}
+          <div class="mb-6 rounded-xl p-4" style="background: linear-gradient(135deg, #f0fdf4, #dcfce7); border: 1px solid #bbf7d0;">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: #16a34a;">
+                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 class="font-semibold" style="color: #166534;">Top Achievements</h4>
+                  <p class="text-xs" style="color: #15803d;">{{ c.achievement_analysis.quantified_count }} quantified • Score: {{ c.achievement_analysis.score }}%</p>
+                </div>
+              </div>
+            </div>
+            <ul class="space-y-1.5">
+              {% for achievement in c.achievement_analysis.top_achievements[:3] %}
+              <li class="text-sm p-2 rounded flex items-start gap-2" style="background: white;">
+                <span style="color: #16a34a;">✓</span>
+                <span style="color: #166534;">{{ achievement }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% endif %}
+
+          <!-- Career Trajectory -->
+          {% if c.career_trajectory %}
+          <div class="mb-6 rounded-xl p-4" style="background: linear-gradient(135deg, #faf5ff, #f3e8ff); border: 1px solid #e9d5ff;">
+            <div class="flex items-center gap-2 mb-3">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: #9333ea;">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+                </svg>
+              </div>
+              <h4 class="font-semibold" style="color: #7e22ce;">Career Trajectory</h4>
+            </div>
+
+            <!-- Trajectory Badges -->
+            <div class="flex flex-wrap gap-2 mb-3">
+              <span class="px-2 py-1 rounded-full text-xs font-semibold"
+                style="{% if c.career_trajectory.progression_type in ['rapid_growth', 'steady_growth'] %}background: #dcfce7; color: #166534;{% elif c.career_trajectory.progression_type == 'lateral' %}background: #fef3c7; color: #92400e;{% else %}background: #fee2e2; color: #991b1b;{% endif %}">
+                {{ c.career_trajectory.progression_type | replace('_', ' ') | title }}
+              </span>
+              <span class="px-2 py-1 rounded-full text-xs font-semibold"
+                style="{% if c.career_trajectory.job_hopping_risk == 'low' %}background: #dcfce7; color: #166534;{% elif c.career_trajectory.job_hopping_risk == 'medium' %}background: #fef3c7; color: #92400e;{% else %}background: #fee2e2; color: #991b1b;{% endif %}">
+                Job Hopping: {{ c.career_trajectory.job_hopping_risk | title }}
+              </span>
+              <span class="px-2 py-1 rounded-full text-xs font-semibold"
+                style="{% if c.career_trajectory.growth_potential == 'high' %}background: #dcfce7; color: #166534;{% elif c.career_trajectory.growth_potential == 'medium' %}background: #dbeafe; color: #1e40af;{% else %}background: #f3f4f6; color: #6b7280;{% endif %}">
+                Growth: {{ c.career_trajectory.growth_potential | title }}
+              </span>
+              {% if c.career_trajectory.pivot_detected %}
+              <span class="px-2 py-1 rounded-full text-xs font-semibold" style="background: #fef3c7; color: #92400e;">
+                Career Pivot
+              </span>
+              {% endif %}
+            </div>
+
+            <!-- Green/Red Flags -->
+            <div class="grid sm:grid-cols-2 gap-3">
+              {% if c.career_trajectory.green_flags %}
+              <div class="text-xs">
+                <p class="font-semibold mb-1" style="color: #166534;">Green Flags</p>
+                <ul class="space-y-0.5" style="color: #15803d;">
+                  {% for flag in c.career_trajectory.green_flags[:3] %}
+                  <li>• {{ flag }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+              {% if c.career_trajectory.red_flags %}
+              <div class="text-xs">
+                <p class="font-semibold mb-1" style="color: #991b1b;">Concerns</p>
+                <ul class="space-y-0.5" style="color: #dc2626;">
+                  {% for flag in c.career_trajectory.red_flags[:3] %}
+                  <li>• {{ flag }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Keyword Analysis (from LLM Holistic Score) -->
+      {% if c.llm_holistic_score %}
+      <div class="mt-4 pt-4" style="border-top: 1px solid var(--border-light);" x-data="{ showKeywords: false }">
+        <button @click="showKeywords = !showKeywords" class="w-full flex items-center justify-between">
+          <span class="text-sm font-semibold flex items-center gap-2" style="color: var(--text-primary);">
+            <svg class="w-4 h-4" style="color: #6366f1;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/>
+            </svg>
+            Keyword & Fit Analysis
+            <span class="text-xs font-normal px-2 py-0.5 rounded-full" style="background: linear-gradient(135deg, #ede9fe, #dbeafe); color: #5b21b6;">AI</span>
+          </span>
+          <svg class="w-4 h-4 transition-transform" :class="showKeywords && 'rotate-180'" style="color: var(--text-tertiary)" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/>
+          </svg>
+        </button>
+        <div x-show="showKeywords" x-transition class="mt-3 space-y-3">
+          <!-- LLM Reasoning -->
+          {% if c.llm_holistic_score.reasoning %}
+          <p class="text-sm" style="color: var(--text-secondary); line-height: 1.6;">{{ c.llm_holistic_score.reasoning }}</p>
+          {% endif %}
+          
+          <!-- Dimension Scores -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div class="rounded-lg p-2 text-center" style="background: var(--surface-secondary);">
+              <p class="text-[10px] font-semibold uppercase" style="color: var(--text-tertiary);">Requirements</p>
+              <p class="text-lg font-bold" style="color: {{ '#2a8703' if c.llm_holistic_score.requirement_fulfillment >= 70 else '#ea1100' }};">{{ c.llm_holistic_score.requirement_fulfillment | round(0) | int }}%</p>
+            </div>
+            <div class="rounded-lg p-2 text-center" style="background: var(--surface-secondary);">
+              <p class="text-[10px] font-semibold uppercase" style="color: var(--text-tertiary);">Experience</p>
+              <p class="text-lg font-bold" style="color: {{ '#2a8703' if c.llm_holistic_score.experience_relevance >= 70 else '#ea1100' }};">{{ c.llm_holistic_score.experience_relevance | round(0) | int }}%</p>
+            </div>
+            <div class="rounded-lg p-2 text-center" style="background: var(--surface-secondary);">
+              <p class="text-[10px] font-semibold uppercase" style="color: var(--text-tertiary);">Skill Depth</p>
+              <p class="text-lg font-bold" style="color: {{ '#2a8703' if c.llm_holistic_score.skill_depth >= 70 else '#ea1100' }};">{{ c.llm_holistic_score.skill_depth | round(0) | int }}%</p>
+            </div>
+            <div class="rounded-lg p-2 text-center" style="background: var(--surface-secondary);">
+              <p class="text-[10px] font-semibold uppercase" style="color: var(--text-tertiary);">Projects</p>
+              <p class="text-lg font-bold" style="color: {{ '#2a8703' if c.llm_holistic_score.project_alignment >= 70 else '#ea1100' }};">{{ c.llm_holistic_score.project_alignment | round(0) | int }}%</p>
+            </div>
+          </div>
+
+          <!-- Keyword Matches & Gaps -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {% if c.llm_holistic_score.keyword_matches %}
+            <div>
+              <p class="text-xs font-semibold mb-1.5" style="color: #2a8703;">✓ Keywords Found ({{ c.llm_holistic_score.keyword_matches | length }})</p>
+              <div class="flex flex-wrap gap-1">
+                {% for kw in c.llm_holistic_score.keyword_matches[:15] %}
+                <span class="px-2 py-0.5 rounded text-[11px] font-medium" style="background: #ecfdf5; color: #065f46;">{{ kw }}</span>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+            {% if c.llm_holistic_score.keyword_gaps %}
+            <div>
+              <p class="text-xs font-semibold mb-1.5" style="color: #ea1100;">✗ Keywords Missing ({{ c.llm_holistic_score.keyword_gaps | length }})</p>
+              <div class="flex flex-wrap gap-1">
+                {% for kw in c.llm_holistic_score.keyword_gaps[:15] %}
+                <span class="px-2 py-0.5 rounded text-[11px] font-medium" style="background: #fef2f2; color: #991b1b;">{{ kw }}</span>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Confidence -->
+          {% if c.llm_holistic_score.confidence %}
+          <p class="text-[10px]" style="color: var(--text-tertiary);">AI confidence: {{ (c.llm_holistic_score.confidence * 100) | round(0) | int }}%</p>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+          <!-- Improvement Suggestions Panel -->
+          {% if c.improvement_suggestions %}
+          <div class="mb-6 rounded-xl p-4" style="background: linear-gradient(135deg, #fefce8, #fef9c3); border: 1px solid #fde047;">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background: #fbbf24;">
+                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 class="font-semibold" style="color: #854d0e;">Resume Improvement Suggestions</h4>
+                  <p class="text-xs" style="color: #a16207;">{{ c.improvement_suggestions.suggestions | length }} actionable improvements</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <div class="text-sm font-mono">
+                  <span style="color: #a16207;">Current:</span>
+                  <span class="font-bold" style="color: #854d0e;">{{ c.improvement_suggestions.total_score }}%</span>
+                  <span style="color: #a16207;">→</span>
+                  <span class="font-bold text-success">{{ c.improvement_suggestions.potential_score }}%</span>
+                </div>
+              </div>
+            </div>
+
+            <p class="text-sm mb-3" style="color: #854d0e;">{{ c.improvement_suggestions.summary }}</p>
+
+            <div class="space-y-2">
+              {% for sugg in c.improvement_suggestions.suggestions %}
+              <div class="rounded-lg p-3" style="background: white; border-left: 3px solid
+                {% if sugg.priority == 'critical' %}#ea1100{% elif sugg.priority == 'high' %}#ffc220{% elif sugg.priority == 'medium' %}#0053e2{% else %}#6b7280{% endif %};">
+                <div class="flex items-start gap-2 mb-1">
+                  <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded"
+                    style="{% if sugg.priority == 'critical' %}background: #fef2f2; color: #991b1b;{% elif sugg.priority == 'high' %}background: #fffbeb; color: #92400e;{% elif sugg.priority == 'medium' %}background: #dbeafe; color: #1e40af;{% else %}background: #f3f4f6; color: #4b5563;{% endif %}">
+                    {{ sugg.priority }}
+                  </span>
+                  <span class="text-[10px] font-mono px-1.5 py-0.5 rounded" style="background: var(--surface-secondary); color: var(--text-tertiary);">
+                    {{ sugg.category | replace('_', ' ') }}
+                  </span>
+                </div>
+                <p class="text-sm font-medium" style="color: var(--text-primary);">{{ sugg.improvement }}</p>
+                {% if sugg.example %}
+                <pre class="text-xs font-mono mt-2 p-2 rounded overflow-x-auto" style="background: var(--surface-secondary); color: var(--text-secondary);">{{ sugg.example }}</pre>
+                {% endif %}
+                <p class="text-xs mt-1" style="color: var(--text-tertiary);">{{ sugg.jd_relevance }}</p>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Section Scores -->
+          <div class="grid grid-cols-5 gap-3 mb-6">
+            {% set sections = [
+              ('Skills', c.section_scores.skills, c.weights.skills),
+              ('Similarity', c.section_scores.similarity, c.weights.similarity),
+              ('Experience', c.section_scores.experience, c.weights.experience),
+              ('Education', c.section_scores.education, c.weights.education),
+              ('Projects', c.section_scores.projects, c.weights.projects)
+            ] %}
+            {% for name, score, weight in sections %}
+            <div class="text-center p-3 rounded-xl" style="background: var(--surface-secondary)">
+              <div class="text-lg font-bold font-mono
+                {% if score >= 70 %}text-success{% elif score >= 40 %}text-walmart-blue{% else %}text-danger{% endif %}">{{ score }}</div>
+              <div class="text-xs mt-1" style="color: var(--text-tertiary)">{{ name }}</div>
+              <div class="text-[10px] font-mono mt-0.5" style="color: var(--text-tertiary)">{{ weight }}% weight</div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <!-- Radar Chart -->
+          <div class="mb-6" style="height: 260px;">
+            <canvas id="radar-{{ loop.index0 }}" height="260"
+              data-skills="{{ c.section_scores.skills }}"
+              data-similarity="{{ c.section_scores.similarity }}"
+              data-experience="{{ c.section_scores.experience }}"
+              data-education="{{ c.section_scores.education }}"
+              data-projects="{{ c.section_scores.projects }}"
+            ></canvas>
+          </div>
+
+          <!-- Skills (Enhanced with Semantic Proficiency) -->
+          {% if c.semantic_skills %}
+          <div class="grid sm:grid-cols-2 gap-6">
+            <div>
+              <h4 class="text-sm font-semibold text-success mb-2 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                Matched Skills ({{ c.semantic_skills.matched | length }})
+              </h4>
+              <div class="flex flex-wrap gap-1.5">
+                {% for skill in c.semantic_skills.matched %}
+                <span class="skill-badge skill-matched">
+                  {{ skill }}
+                  {% if c.semantic_skills.proficiency_levels and c.semantic_skills.proficiency_levels[skill] %}
+                  <span class="ml-1 text-[9px] opacity-75">[{{ c.semantic_skills.proficiency_levels[skill][:3] | upper }}]</span>
+                  {% endif %}
+                </span>
+                {% endfor %}
+                {% if not c.semantic_skills.matched %}
+                <span class="text-sm italic" style="color: var(--text-tertiary)">None matched</span>
+                {% endif %}
+              </div>
+
+              {% if c.semantic_skills.partial %}
+              <h5 class="text-xs font-semibold mt-3 mb-1.5" style="color: #0369a1;">Partial Matches</h5>
+              <div class="flex flex-wrap gap-1.5">
+                {% for p in c.semantic_skills.partial %}
+                <span class="skill-badge" style="background: #dbeafe; color: #1e40af;" title="Required: {{ p.required }} → Found: {{ p.found }}">
+                  {{ p.found }} ≈ {{ p.required }}
+                </span>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            <div>
+              <h4 class="text-sm font-semibold text-danger mb-2 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                Missing Skills ({{ c.semantic_skills.missing | length }})
+              </h4>
+              <div class="flex flex-wrap gap-1.5">
+                {% for skill in c.semantic_skills.missing %}
+                <span class="skill-badge skill-missing">{{ skill }}</span>
+                {% endfor %}
+                {% if not c.semantic_skills.missing %}
+                <span class="text-sm italic" style="color: var(--text-tertiary)">All covered ✔</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <!-- Fallback: Original skills display when semantic not available -->
+          <div class="grid sm:grid-cols-2 gap-6">
+            <div>
+              <h4 class="text-sm font-semibold text-success mb-2 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                Matched Skills ({{ c.matched_skills | length }})
+              </h4>
+              <div class="flex flex-wrap gap-1.5">
+                {% for skill in c.matched_skills %}
+                <span class="skill-badge skill-matched">{{ skill }}</span>
+                {% endfor %}
+                {% if not c.matched_skills %}
+                <span class="text-sm italic" style="color: var(--text-tertiary)">None matched</span>
+                {% endif %}
+              </div>
+            </div>
+            <div>
+              <h4 class="text-sm font-semibold text-danger mb-2 flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                Missing Skills ({{ c.missing_skills | length }})
+              </h4>
+              <div class="flex flex-wrap gap-1.5">
+                {% for skill in c.missing_skills %}
+                <span class="skill-badge skill-missing">{{ skill }}</span>
+                {% endfor %}
+                {% if not c.missing_skills %}
+                <span class="text-sm italic" style="color: var(--text-tertiary)">All covered ✔</span>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endif %}
+
+          {% if c.extra_skills %}
+          <div class="mt-4">
+            <h4 class="text-sm font-semibold text-walmart-blue mb-2">Extra Skills ({{ c.extra_skills | length }})</h4>
+            <div class="flex flex-wrap gap-1.5">
+              {% for skill in c.extra_skills %}
+              <span class="skill-badge skill-extra">{{ skill }}</span>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  </div><!-- /CANDIDATES TAB -->
+
+  <!-- AI Not Enabled Banner -->
+  {% if not results.ai_enabled %}
+  <div class="rounded-2xl p-5" style="background: linear-gradient(135deg, #f5f3ff, #eff6ff); border: 1px solid #c7d2fe;">
+    <div class="flex items-start gap-3">
+      <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background: linear-gradient(135deg, #7c3aed, #2563eb);">
+        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+        </svg>
+      </div>
+      <div>
+        <h4 class="font-semibold" style="color: #4c1d95;">Unlock AI-Powered Analysis</h4>
+        <p class="text-sm mt-1" style="color: #5b21b6;">
+          Start <code class="font-mono text-xs px-1.5 py-0.5 rounded" style="background: #ede9fe;">ollama serve</code> to enable:
+          semantic similarity (embeddings), per-candidate AI insights, interview questions, and executive hiring summaries.
+        </p>
+        <p class="text-xs mt-2" style="color: #7c3aed;">Everything runs 100% locally on your machine — no data leaves your laptop. Models: <strong>llama3.1</strong> (chat) + <strong>nomic-embed-text</strong> (embeddings).</p>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Export -->
+  <div class="flex justify-end gap-3">
+    <button onclick="window.print()" class="btn-ghost">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0110.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0l.229 2.523a1.125 1.125 0 01-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0021 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 00-1.913-.247M6.34 18H5.25A2.25 2.25 0 013 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 011.913-.247m10.5 0a48.536 48.536 0 00-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18.75 12h.008v.008h-.008V12z"/>
+      </svg>
+      Print
+    </button>
+    <button onclick="exportCSV()" class="btn-secondary">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+      </svg>
+      Export CSV
+    </button>
+  </div>
+</div>
+
+<script>
+/* Destroy any old Chart.js instances before creating new ones.
+ * Uses window._atsCharts as a global store (var, not const)
+ * to survive HTMX re-swaps without SyntaxError. */
+(function cleanupOldCharts() {
+  if (window._atsCharts) {
+    Object.values(window._atsCharts).forEach(c => { try { c.destroy(); } catch {} });
+  }
+  window._atsCharts = {};
+})();
+
+(function initScoreRings() {
+  document.querySelectorAll('.score-ring[data-score]').forEach(el => {
+    createScoreRing(el, parseFloat(el.dataset.score), 56, 5);
+  });
+})();
+
+(function initDistributionChart() {
+  const canvas = document.getElementById('distribution-chart');
+  if (!canvas) return;
+  const candidates = {{ results.all_candidates | tojson }};
+  const labels = candidates.map(c => c.candidate.replace(/\.[^.]+$/, '').slice(0, 25));
+  const scores = candidates.map(c => c.final_score);
+  const colors = scores.map(s =>
+    s >= 80 ? '#2a8703' : s >= 65 ? '#0053e2' : s >= 50 ? '#ffc220' : '#ea1100'
+  );
+  window._atsCharts['distribution'] = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'JD Fit Score',
+        data: scores,
+        backgroundColor: colors.map(c => c + '33'),
+        borderColor: colors,
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      scales: {
+        x: {
+          min: 0, max: 100,
+          grid: { color: 'rgba(0,0,0,.05)' },
+          ticks: { font: { size: 11 }, callback: v => v + '%' },
+          title: { display: true, text: 'JD Fit Score', font: { size: 11, weight: '600' }, color: '#94a3b8' },
+        },
+        y: { grid: { display: false }, ticks: { font: { size: 11, weight: '500' } } },
+      },
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1e293b', padding: 12, cornerRadius: 8, callbacks: { label: ctx => 'JD Fit: ' + ctx.parsed.x + '%' } } },
+    },
+  });
+})();
+
+function toggleCandidate(idx) {
+  const detail = document.getElementById('detail-' + idx);
+  const chevron = document.getElementById('chevron-' + idx);
+  if (!detail) return;
+  const isHidden = detail.classList.contains('hidden');
+  document.querySelectorAll('[id^="detail-"]').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('[id^="chevron-"]').forEach(el => el.style.transform = '');
+  if (isHidden) {
+    detail.classList.remove('hidden');
+    chevron.style.transform = 'rotate(180deg)';
+    initRadar(idx);
+  }
+}
+
+function initRadar(idx) {
+  const canvas = document.getElementById('radar-' + idx);
+  if (!canvas) return;
+  // Destroy existing radar for this candidate if re-expanding
+  if (window._atsCharts['radar-' + idx]) {
+    window._atsCharts['radar-' + idx].destroy();
+  }
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const gridColor = isDark ? 'rgba(255,255,255,.1)' : 'rgba(0,0,0,.08)';
+  const labelColor = isDark ? '#94a3b8' : '#475569';
+  const data = [
+    parseFloat(canvas.dataset.skills), parseFloat(canvas.dataset.similarity),
+    parseFloat(canvas.dataset.experience), parseFloat(canvas.dataset.education),
+    parseFloat(canvas.dataset.projects),
+  ];
+  window._atsCharts['radar-' + idx] = new Chart(canvas, {
+    type: 'radar',
+    data: {
+      labels: ['Skills', 'Similarity', 'Experience', 'Education', 'Projects'],
+      datasets: [{ label: 'JD Fit', data: data, backgroundColor: 'rgba(0, 83, 226, 0.12)', borderColor: '#0053e2', borderWidth: 2, pointBackgroundColor: '#0053e2', pointBorderColor: '#fff', pointBorderWidth: 1, pointRadius: 4, pointHoverRadius: 6 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { r: { beginAtZero: true, max: 100, ticks: { stepSize: 25, font: { size: 10 }, color: labelColor, backdropColor: 'transparent' }, pointLabels: { font: { size: 12, weight: '600' }, color: labelColor }, grid: { color: gridColor }, angleLines: { color: gridColor } } },
+      plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1e293b', padding: 10, cornerRadius: 6 } },
+    },
+  });
+}
+
+function exportCSV() {
+  const candidates = {{ results.all_candidates | tojson }};
+  const headers = ['Rank','Candidate','JD Fit %','Decision','Skills','Similarity','Experience','Education','Projects','Skill Match','Matched Skills','Missing Skills','AI Verdict','AI Summary'];
+  function esc(val) {
+    const s = String(val ?? '');
+    return (s.includes(',') || s.includes('"') || s.includes('\n'))
+      ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+  const rows = candidates.map((c, i) => [
+    i + 1, esc(c.candidate), c.final_score, esc(c.decision),
+    c.section_scores.skills, c.section_scores.similarity,
+    c.section_scores.experience, c.section_scores.education,
+    c.section_scores.projects, esc(c.skill_match_ratio),
+    esc(c.matched_skills.join(', ')), esc(c.missing_skills.join(', ')),
+    esc(c.ai_insight?.verdict ?? 'N/A'), esc(c.ai_insight?.fit_summary ?? 'N/A'),
+  ]);
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ats-results-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* Side-by-side comparison panel */
+function comparePanel() {
+  return {
+    selected: [0, 1].slice(0, {{ results.all_candidates | length }}),
+    showCompare: false,
+    candidates: {{ results.all_candidates | tojson }},
+    toggle(idx) {
+      const pos = this.selected.indexOf(idx);
+      if (pos >= 0) {
+        this.selected.splice(pos, 1);
+      } else if (this.selected.length < 3) {
+        this.selected.push(idx);
+        this.selected.sort((a, b) => a - b);
+      }
+    },
+    getScoreClass(score) {
+      if (score >= 80) return 'text-success';
+      if (score >= 65) return 'text-walmart-blue';
+      if (score >= 50) return 'text-warning';
+      return 'text-danger';
+    },
+  };
+}
+
+if (typeof initCounters === 'function') initCounters();
+
+/* Keyboard navigation for candidate list */
+(function initKeyboardNav() {
+  let focusedIdx = -1;
+  const total = {{ results.all_candidates | length }};
+  if (total === 0) return;
+
+  function focusCard(idx) {
+    const card = document.getElementById('candidate-card-' + idx);
+    if (!card) return;
+    // Remove focus ring from old
+    document.querySelectorAll('[id^="candidate-card-"]').forEach(el => {
+      el.style.outline = '';
+    });
+    card.style.outline = '2px solid var(--wm-blue)';
+    card.style.outlineOffset = '2px';
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    focusedIdx = idx;
+  }
+
+  document.addEventListener('keydown', function(e) {
+    // Don't hijack when typing in inputs
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.isContentEditable)) return;
+    // Only when results area is visible
+    const results = document.getElementById('results-area');
+    if (!results || results.children.length === 0) return;
+
+    if (e.key === 'ArrowDown' || e.key === 'j') {
+      e.preventDefault();
+      focusCard(Math.min(focusedIdx + 1, total - 1));
+    } else if (e.key === 'ArrowUp' || e.key === 'k') {
+      e.preventDefault();
+      focusCard(Math.max(focusedIdx - 1, 0));
+    } else if (e.key === 'Enter' && focusedIdx >= 0) {
+      e.preventDefault();
+      toggleCandidate(focusedIdx);
+    } else if (e.key === 'Escape') {
+      // Collapse all
+      document.querySelectorAll('[id^="detail-"]').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('[id^="chevron-"]').forEach(el => el.style.transform = '');
+      document.querySelectorAll('[id^="candidate-card-"]').forEach(el => el.style.outline = '');
+      focusedIdx = -1;
+    }
+  });
+})();
+</script>

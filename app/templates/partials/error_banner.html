@@ -1,0 +1,13 @@
+<!-- Error Banner (injected by HTMX into #results-area) -->
+<div class="bg-red-50 border border-red-200 rounded-2xl p-5 flex items-start gap-4 animate-fade-in">
+  <div class="w-10 h-10 bg-danger rounded-xl flex items-center justify-center shrink-0">
+    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+    </svg>
+  </div>
+  <div>
+    <h3 class="font-semibold text-red-800">Analysis Error</h3>
+    <p class="text-sm text-red-600 mt-1">{{ error_message }}</p>
+    <p class="text-xs text-red-400 mt-2">Please fix the issue and try again.</p>
+  </div>
+</div>
