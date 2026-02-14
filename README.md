@@ -1,4 +1,4 @@
-# 📄 ATS Resume Analyzer v3.0
+# 📄 ATS Resume Analyzer
 
 An enterprise-grade Applicant Tracking System (ATS) resume analyzer built with **FastAPI**, **HTMX**, **Alpine.js**, **Tailwind CSS**, and **Chart.js**. Features deep LLM integration for semantic analysis, career trajectory evaluation, and AI-powered resume improvement coaching.
 
