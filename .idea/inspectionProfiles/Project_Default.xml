@@ -1,0 +1,26 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="fastapi" />
+          <option value="uvicorn" />
+          <option value="python-multipart" />
+          <option value="scikit-learn" />
+          <option value="numpy" />
+          <option value="PyPDF2" />
+          <option value="python-docx" />
+          <option value="jinja2" />
+          <option value="pydantic" />
+          <option value="pdfplumber" />
+          <option value="httpx" />
+          <option value="reportlab" />
+          <option value="openai" />
+          <option value="groq" />
+          <option value="yfinance" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
